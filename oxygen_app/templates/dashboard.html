@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oxygen Sensor Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial; background: #1a1a2e; color: white; padding: 20px; }
+    h1 { color: #00d4ff; text-align: center; margin-bottom: 24px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 24px; }
+    .card { background: #16213e; border-radius: 16px; padding: 24px; min-width: 160px; text-align: center; }
+    .value { font-size: 40px; font-weight: bold; color: #00d4ff; }
+    .unit  { font-size: 14px; color: #aaa; margin-top: 4px; }
+    .label { font-size: 13px; color: #888; margin-top: 8px; }
+    .relay-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .relay-card { background: #16213e; border-radius: 16px; padding: 20px 30px; text-align: center; min-width: 140px; }
+    .relay-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+    .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%; margin-top: 6px; }
+    .btn-on  { background: #4caf50; color: white; }
+    .btn-off { background: #e94560; color: white; }
+    .btn:hover { opacity: 0.85; }
+    .status { text-align: center; margin-top: 20px; font-size: 13px; color: #888; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .dot-on  { background: #4caf50; }
+    .dot-off { background: #e94560; }
+    .section-title { color: #aaa; text-align: center; margin: 20px 0 12px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Oxygen Sensor Dashboard</h1>
+
+  <!-- ค่าเซนเซอร์ -->
+  <div class="grid">
+    <div class="card">
+      <div class="value" id="o2pct">--</div>
+      <div class="unit">%</div>
+      <div class="label">ออกซิเจน</div>
+    </div>
+    <div class="card">
+      <div class="value" id="o2mgl">--</div>
+      <div class="unit">mg/L</div>
+      <div class="label">ออกซิเจน</div>
+    </div>
+    <div class="card">
+      <div class="value" id="temp">--</div>
+      <div class="unit">°C</div>
+      <div class="label">อุณหภูมิน้ำ</div>
+    </div>
+  </div>
+
+  <!-- ควบคุม Relay -->
+  <p class="section-title">ควบคุม Relay</p>
+  <div class="relay-grid">
+    <div class="relay-card">
+      <div class="relay-title">
+        <span class="dot dot-off" id="dot1"></span>Relay 1
+      </div>
+      <button class="btn btn-on"  onclick="setRelay(1, true)">เปิด</button>
+      <button class="btn btn-off" onclick="setRelay(1, false)">ปิด</button>
+    </div>
+    <div class="relay-card">
+      <div class="relay-title">
+        <span class="dot dot-off" id="dot2"></span>Relay 2
+      </div>
+      <button class="btn btn-on"  onclick="setRelay(2, true)">เปิด</button>
+      <button class="btn btn-off" onclick="setRelay(2, false)">ปิด</button>
+    </div>
+    <div class="relay-card">
+      <div class="relay-title">
+        <span class="dot dot-off" id="dot3"></span>Relay 3
+      </div>
+      <button class="btn btn-on"  onclick="setRelay(3, true)">เปิด</button>
+      <button class="btn btn-off" onclick="setRelay(3, false)">ปิด</button>
+    </div>
+  </div>
+
+  <div class="status" id="status">กำลังโหลด...</div>
+
+  <script>
+    function setRelay(num, state) {
+      fetch(`/api/relay/${num}/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: state })
+      }).then(r => r.json()).then(d => {
+        updateDot(num, state);
+      });
+    }
+
+    function updateDot(num, state) {
+      const dot = document.getElementById(`dot${num}`);
+      dot.className = `dot ${state ? 'dot-on' : 'dot-off'}`;
+    }
+
+    function fetchData() {
+      fetch('/api/latest/')
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) return;
+          document.getElementById('o2pct').innerText = d.o2_pct.toFixed(2);
+          document.getElementById('o2mgl').innerText = d.o2_mgl.toFixed(2);
+          document.getElementById('temp').innerText  = d.temp.toFixed(1);
+          updateDot(1, d.relay1);
+          updateDot(2, d.relay2);
+          updateDot(3, d.relay3);
+          document.getElementById('status').innerText = `อัปเดตล่าสุด: ${d.timestamp}`;
+        });
+    }
+
+    setInterval(fetchData, 2000);
+    fetchData();
+  </script>
+</body>
+</html>
