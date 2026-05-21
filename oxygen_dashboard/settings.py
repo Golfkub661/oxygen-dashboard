@@ -1,11 +1,14 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-oxygen-dashboard-secret-key'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+# ─── Security ───────────────────────────────────────────────
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-oxygen-dashboard-secret-key')
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# ─── Applications ────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -17,8 +20,10 @@ INSTALLED_APPS = [
     'oxygen_app',
 ]
 
+# ─── Middleware ───────────────────────────────────────────────
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ static files on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -45,6 +50,7 @@ TEMPLATES = [
     },
 ]
 
+# ─── ASGI / Channels ─────────────────────────────────────────
 ASGI_APPLICATION = 'oxygen_dashboard.asgi.application'
 
 CHANNEL_LAYERS = {
@@ -53,17 +59,37 @@ CHANNEL_LAYERS = {
     }
 }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# ─── Database ─────────────────────────────────────────────────
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if DATABASE_URL:
+    import dj_database_url
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
+# ─── Static Files ─────────────────────────────────────────────
 STATIC_URL = '/static/'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# MQTT
-MQTT_BROKER = 'broker.hivemq.com'
-MQTT_PORT = 1883
-MQTT_TOPIC = 'oxygen/sensor/data'
+# ─── Misc ──────────────────────────────────────────────────────
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+TIME_ZONE = 'Asia/Bangkok'
+USE_TZ = True
+
+# ─── MQTT ──────────────────────────────────────────────────────
+MQTT_BROKER = os.environ.get('MQTT_BROKER', 'broker.hivemq.com')
+MQTT_PORT = int(os.environ.get('MQTT_PORT', '1883'))
+MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'sensor/oxygen')  # ✅ แก้ให้ตรง ESP32

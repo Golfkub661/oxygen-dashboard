@@ -28,7 +28,9 @@ def on_message(c, userdata, msg):
         OxygenReading.objects.create(
             value       = data.get("o2_pct", 0),
             mgl         = data.get("o2_mgl", 0),
-            temperature = data.get("temp", 0),
+            temperature = data.get("temp_water", 0),  # ✅ แก้จาก "temp"
+            temp_air    = data.get("temp_air", 0),    # ✅ เพิ่มใหม่
+            humidity    = data.get("humidity", 0),    # ✅ เพิ่มใหม่
             relay1      = data.get("relay1", False),
             relay2      = data.get("relay2", False),
             relay3      = data.get("relay3", False),

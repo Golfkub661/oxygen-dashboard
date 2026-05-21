@@ -11,6 +11,8 @@
     .grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 24px; }
     .card { background: #16213e; border-radius: 16px; padding: 24px; min-width: 160px; text-align: center; }
     .value { font-size: 40px; font-weight: bold; color: #00d4ff; }
+    .value.green  { color: #4caf50; }
+    .value.orange { color: #ff9800; }
     .unit  { font-size: 14px; color: #aaa; margin-top: 4px; }
     .label { font-size: 13px; color: #888; margin-top: 8px; }
     .relay-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
@@ -30,7 +32,8 @@
 <body>
   <h1>Oxygen Sensor Dashboard</h1>
 
-  <!-- ค่าเซนเซอร์ -->
+  <!-- ค่าเซนเซอร์ออกซิเจน -->
+  <p class="section-title">เซนเซอร์ออกซิเจน</p>
   <div class="grid">
     <div class="card">
       <div class="value" id="o2pct">--</div>
@@ -46,6 +49,21 @@
       <div class="value" id="temp">--</div>
       <div class="unit">°C</div>
       <div class="label">อุณหภูมิน้ำ</div>
+    </div>
+  </div>
+
+  <!-- ✅ ค่าเซนเซอร์อากาศ -->
+  <p class="section-title">เซนเซอร์อากาศ</p>
+  <div class="grid">
+    <div class="card">
+      <div class="value orange" id="temp_air">--</div>
+      <div class="unit">°C</div>
+      <div class="label">อุณหภูมิอากาศ</div>
+    </div>
+    <div class="card">
+      <div class="value green" id="humidity">--</div>
+      <div class="unit">%RH</div>
+      <div class="label">ความชื้น</div>
     </div>
   </div>
 
@@ -98,9 +116,11 @@
         .then(r => r.json())
         .then(d => {
           if (d.error) return;
-          document.getElementById('o2pct').innerText = d.o2_pct.toFixed(2);
-          document.getElementById('o2mgl').innerText = d.o2_mgl.toFixed(2);
-          document.getElementById('temp').innerText  = d.temp.toFixed(1);
+          document.getElementById('o2pct').innerText    = d.o2_pct  != null ? d.o2_pct.toFixed(2)  : '--';
+          document.getElementById('o2mgl').innerText    = d.o2_mgl  != null ? d.o2_mgl.toFixed(2)  : '--';
+          document.getElementById('temp').innerText     = d.temp     != null ? d.temp.toFixed(1)    : '--';
+          document.getElementById('temp_air').innerText = d.temp_air != null ? d.temp_air.toFixed(1): '--'; // ✅
+          document.getElementById('humidity').innerText = d.humidity != null ? d.humidity.toFixed(1): '--'; // ✅
           updateDot(1, d.relay1);
           updateDot(2, d.relay2);
           updateDot(3, d.relay3);

@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: oxygen-dashboard
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "daphne -b 0.0.0.0 -p $PORT oxygen_dashboard.asgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: MQTT_BROKER
+        value: "broker.hivemq.com"
+      - key: MQTT_PORT
+        value: "1883"
+      - key: MQTT_TOPIC
+        value: "sensor/oxygen"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: oxygen-db
+          property: connectionString
+
+databases:
+  - name: oxygen-db
+    databaseName: oxygen_dashboard
+    user: oxygen_user
+    plan: free
