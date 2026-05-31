@@ -13,7 +13,7 @@ def dashboard(request):
 def api_latest(request):
     latest = OxygenReading.objects.order_by('-timestamp').first()
     if latest:
-        local_time = timezone.localtime(latest.timestamp)  # ✅ แปลงเป็น Asia/Bangkok
+        local_time = timezone.localtime(latest.timestamp)
         return JsonResponse({
             'o2_pct':    latest.value,
             'o2_mgl':    latest.mgl,
@@ -23,9 +23,13 @@ def api_latest(request):
             'relay1':    latest.relay1,
             'relay2':    latest.relay2,
             'relay3':    latest.relay3,
-            'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),  # ✅ เพิ่มวันที่
+            'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
+            'recording': mqtt_client.is_recording,  # ✅ ส่งสถานะกลับด้วย
         })
-    return JsonResponse({'error': 'no data'})
+    return JsonResponse({
+        'error': 'no data',
+        'recording': mqtt_client.is_recording
+    })
 
 @csrf_exempt
 def api_relay(request, relay_num):
@@ -41,3 +45,16 @@ def api_relay(request, relay_num):
 
         return JsonResponse({'success': True, 'relay': relay_num, 'state': state})
     return JsonResponse({'error': 'POST only'})
+
+# ✅ API เริ่ม/หยุดบันทึก
+@csrf_exempt
+def api_recording(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        action = data.get('action')
+        if action == 'start':
+            mqtt_client.is_recording = True
+        elif action == 'stop':
+            mqtt_client.is_recording = False
+        return JsonResponse({'recording': mqtt_client.is_recording})
+    return JsonResponse({'recording': mqtt_client.is_recording})

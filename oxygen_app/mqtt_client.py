@@ -18,6 +18,9 @@ TOPIC_RLY3  = "control/relay/3"
 
 client = mqtt.Client()
 
+# ✅ ตัวแปรควบคุมการบันทึก
+is_recording = False
+
 def on_connect(c, userdata, flags, rc):
     print(f"MQTT Connected: {rc}")
     c.subscribe(TOPIC_SUB)
@@ -25,17 +28,25 @@ def on_connect(c, userdata, flags, rc):
 def on_message(c, userdata, msg):
     try:
         data = json.loads(msg.payload.decode())
-        OxygenReading.objects.create(
-            value       = data.get("o2_pct", 0),
-            mgl         = data.get("o2_mgl", 0),
-            temperature = data.get("temp_water", 0),  # ✅ แก้จาก "temp"
-            temp_air    = data.get("temp_air", 0),    # ✅ เพิ่มใหม่
-            humidity    = data.get("humidity", 0),    # ✅ เพิ่มใหม่
-            relay1      = data.get("relay1", False),
-            relay2      = data.get("relay2", False),
-            relay3      = data.get("relay3", False),
-        )
-        print(f"Saved: {data}")
+        
+        # ✅ บันทึกเฉพาะตอนกดปุ่มบันทึกเท่านั้น
+        if is_recording:
+            o2 = data.get("o2_pct", 0)
+            mgl = data.get("o2_mgl", 0)
+            if o2 > 0 or mgl > 0:  # ✅ ไม่บันทึกค่า 0
+                OxygenReading.objects.create(
+                    value       = o2,
+                    mgl         = mgl,
+                    temperature = data.get("temp_water", 0),
+                    temp_air    = data.get("temp_air", 0),
+                    humidity    = data.get("humidity", 0),
+                    relay1      = data.get("relay1", False),
+                    relay2      = data.get("relay2", False),
+                    relay3      = data.get("relay3", False),
+                )
+                print(f"Saved: {data}")
+        else:
+            print("Not recording, skipped")
     except Exception as e:
         print(f"Error: {e}")
 
