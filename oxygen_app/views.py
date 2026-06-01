@@ -11,6 +11,23 @@ def dashboard(request):
     return render(request, 'dashboard.html', {'latest': latest})
 
 def api_latest(request):
+    # ✅ ดึงจาก memory ก่อน (อัปเดตเสมอแม้ไม่ได้ recording)
+    data = mqtt_client.latest_data
+    if data:
+        return JsonResponse({
+            'o2_pct':    data.get("o2_pct", 0),
+            'o2_mgl':    data.get("o2_mgl", 0),
+            'temp':      data.get("temp_water", 0),
+            'temp_air':  data.get("temp_air", 0),
+            'humidity':  data.get("humidity", 0),
+            'relay1':    data.get("relay1", False),
+            'relay2':    data.get("relay2", False),
+            'relay3':    data.get("relay3", False),
+            'timestamp': timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M:%S'),
+            'recording': mqtt_client.is_recording,
+        })
+
+    # ถ้ายังไม่มีข้อมูลใหม่ใน memory ดึงจาก DB แทน
     latest = OxygenReading.objects.order_by('-timestamp').first()
     if latest:
         local_time = timezone.localtime(latest.timestamp)
@@ -24,8 +41,9 @@ def api_latest(request):
             'relay2':    latest.relay2,
             'relay3':    latest.relay3,
             'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
-            'recording': mqtt_client.is_recording,  # ✅ ส่งสถานะกลับด้วย
+            'recording': mqtt_client.is_recording,
         })
+
     return JsonResponse({
         'error': 'no data',
         'recording': mqtt_client.is_recording
@@ -46,11 +64,10 @@ def api_relay(request, relay_num):
         return JsonResponse({'success': True, 'relay': relay_num, 'state': state})
     return JsonResponse({'error': 'POST only'})
 
-# ✅ API เริ่ม/หยุดบันทึก
 @csrf_exempt
 def api_recording(request):
     if request.method == 'POST':
-        data = json.loads(request.body)
+        data   = json.loads(request.body)
         action = data.get('action')
         if action == 'start':
             mqtt_client.is_recording = True

@@ -18,7 +18,8 @@ TOPIC_RLY3  = "control/relay/3"
 
 client = mqtt.Client()
 
-# ✅ ตัวแปรควบคุมการบันทึก
+# ✅ เก็บค่าล่าสุดใน memory เสมอ
+latest_data  = {}
 is_recording = False
 
 def on_connect(c, userdata, flags, rc):
@@ -26,14 +27,19 @@ def on_connect(c, userdata, flags, rc):
     c.subscribe(TOPIC_SUB)
 
 def on_message(c, userdata, msg):
+    global latest_data
     try:
         data = json.loads(msg.payload.decode())
-        
-        # ✅ บันทึกเฉพาะตอนกดปุ่มบันทึกเท่านั้น
+
+        # ✅ อัปเดต latest_data เสมอ ไม่ว่าจะ recording หรือไม่
+        latest_data = data
+        print(f"Received: {data}")
+
+        # บันทึก DB เฉพาะตอน recording เท่านั้น
         if is_recording:
-            o2 = data.get("o2_pct", 0)
+            o2  = data.get("o2_pct", 0)
             mgl = data.get("o2_mgl", 0)
-            if o2 > 0 or mgl > 0:  # ✅ ไม่บันทึกค่า 0
+            if o2 > 0 or mgl > 0:  # ไม่บันทึกค่า 0
                 OxygenReading.objects.create(
                     value       = o2,
                     mgl         = mgl,
@@ -46,7 +52,8 @@ def on_message(c, userdata, msg):
                 )
                 print(f"Saved: {data}")
         else:
-            print("Not recording, skipped")
+            print("Not recording, skipped DB save")
+
     except Exception as e:
         print(f"Error: {e}")
 
