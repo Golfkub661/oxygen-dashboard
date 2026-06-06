@@ -17,13 +17,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
-    'corsheaders',   # ✅ เพิ่ม
+    'corsheaders',
     'oxygen_app',
 ]
 
 # ─── Middleware ───────────────────────────────────────────────
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # ✅ ต้องอยู่บนสุด
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -98,7 +98,7 @@ MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'sensor/oxygen')
 
 # ─── CORS ──────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",        # ✅ Next.js dev
-    "https://your-app.vercel.app",  # ✅ ใส่ URL Vercel จริงทีหลัง
+    "http://localhost:3000",
+    "https://oxygen-frontend-qwcibdqmv-golfk001-s-projects.vercel.app",  # ✅ Vercel
 ]
 CORS_ALLOW_CREDENTIALS = True
