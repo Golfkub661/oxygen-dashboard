@@ -4,176 +4,493 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Oxygen Sensor Dashboard</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial; background: #1a1a2e; color: white; padding: 20px; }
-    h1 { color: #00d4ff; text-align: center; margin-bottom: 24px; }
-    .grid { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 24px; }
-    .card { background: #16213e; border-radius: 16px; padding: 24px; min-width: 160px; text-align: center; }
-    .value { font-size: 40px; font-weight: bold; color: #00d4ff; }
-    .value.green  { color: #4caf50; }
-    .value.orange { color: #ff9800; }
-    .unit  { font-size: 14px; color: #aaa; margin-top: 4px; }
-    .label { font-size: 13px; color: #888; margin-top: 8px; }
-    .relay-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .relay-card { background: #16213e; border-radius: 16px; padding: 20px 30px; text-align: center; min-width: 140px; }
-    .relay-title { font-size: 16px; font-weight: bold; margin-bottom: 12px; }
-    .btn { padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; width: 100%; margin-top: 6px; }
-    .btn-on  { background: #4caf50; color: white; }
-    .btn-off { background: #e94560; color: white; }
-    .btn:hover { opacity: 0.85; }
-    .status { text-align: center; margin-top: 20px; font-size: 13px; color: #888; }
-    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-    .dot-on  { background: #4caf50; }
-    .dot-off { background: #e94560; }
-    .section-title { color: #aaa; text-align: center; margin: 20px 0 12px; font-size: 14px; }
-    .rec-card { background: #16213e; border-radius: 16px; padding: 20px; text-align: center; max-width: 400px; margin: 0 auto 24px; }
+    
+    body { 
+      font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif; 
+      background: #EEF4FB; 
+      min-height: 100vh; 
+      display: flex; 
+    }
+
+    /* -------------------------------------------------------------
+       1. แถบเมนูด้านซ้าย (Sidebar) อ้างอิงดีไซน์โมเดิร์น
+       ------------------------------------------------------------- */
+    .sidebar {
+      width: 260px;
+      background: #ffffff;
+      border-right: 1px solid rgba(0, 0, 0, 0.05);
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      flex-shrink: 0;
+    }
+
+    .logo-row { display: flex; align-items: center; gap: 12px; }
+    .logo-circle { width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid #3B6D11; display: flex; align-items: center; justify-content: center; color: #3B6D11; font-size: 18px; font-weight: 700; }
+    .logo-text { font-size: 14px; font-weight: 700; color: #27500A; line-height: 1.3; }
+
+    .menu-list { display: flex; flex-direction: column; gap: 8px; list-style: none; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      color: #555555;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .menu-item.active {
+      background: rgba(59, 109, 17, 0.08);
+      color: #3B6D11;
+    }
+    .menu-item:hover:not(.active) {
+      background: #f5f5f5;
+      color: #1a1a1a;
+    }
+    .menu-icon { font-size: 18px; }
+
+    /* -------------------------------------------------------------
+       2. พื้นที่จัดการหน้าเนื้อหา (Content Panel & Layout)
+       ------------------------------------------------------------- */
+    .main-content {
+      flex-grow: 1;
+      padding: 32px;
+      max-width: 1400px;
+    }
+
+    /* ซ่อนหน้าเว็บที่ไม่ได้เลือกเริ่มต้น */
+    .tab-content { display: none; }
+    .tab-content.active { display: flex; flex-direction: column; gap: 24px; }
+
+    .welcome-header { margin-bottom: 8px; }
+    .welcome-header h1 { font-size: 24px; color: #1a1a1a; font-weight: 700; }
+    .welcome-header p { font-size: 14px; color: #666666; margin-top: 2px; }
+
+    /* แผงควบคุมกล่องข้อมูลสถิติ */
+    .top-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+
+    .card { 
+      background: #fff; 
+      border-radius: 16px; 
+      padding: 24px; 
+      min-height: 220px; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-between;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05); 
+    }
+
+    .card1 { gap: 12px; }
+    .day-name { font-size: 32px; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
+    .date-time-row { display: flex; align-items: baseline; gap: 10px; }
+    .date-str { font-size: 16px; font-weight: 600; color: #666; }
+    .time-str { font-size: 26px; font-weight: 700; color: #3B9B1D; }
+    
+    .metrics-row { display: flex; gap: 40px; margin-top: auto; border-top: 1px solid #f0f0f0; padding-top: 16px; }
+    .metric-val { font-size: 28px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+    .metric-val span { font-size: 15px; font-weight: 600; color: #666; margin-left: 2px; }
+    .metric-lbl { font-size: 13px; font-weight: 600; color: #888; margin-top: 6px; }
+
+    .card-mid { display: flex; flex-direction: column; gap: 12px; min-height: 220px; }
+    .sub-card { 
+      border-radius: 12px; 
+      padding: 16px 24px; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-between; 
+      flex: 1;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+    }
+    .sub-card.blue  { background: #E0F4FF; }
+    .sub-card.green { background: #F0FBE8; }
+    .sub-card.green .lbl-icon { color: #3B9B1D; }
+    .sub-lbl { font-size: 14px; font-weight: 700; color: #2c2c2c; display: flex; align-items: center; justify-content: space-between; }
+    .lbl-icon { font-size: 20px; line-height: 1; }
+    .big-val { font-size: 28px; font-weight: 700; color: #1a1a1a; line-height: 1; }
+    .big-val span { font-size: 15px; font-weight: 600; color: #555; margin-left: 2px; }
+
+    .card-right { gap: 12px; }
+    .right-lbl { font-size: 15px; font-weight: 700; color: #2c2c2c; display: flex; align-items: center; justify-content: space-between; }
+    .card-right .lbl-icon { color: #3B8FD4; }
+    .mgl-val { font-size: 54px; font-weight: 700; color: #1a1a1a; margin-top: auto; margin-bottom: auto; }
+    .mgl-val span { font-size: 22px; font-weight: 600; color: #555; margin-left: 6px; }
+
+    .relay-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .relay-card { 
+      background: #fff; 
+      border-radius: 16px; 
+      padding: 24px 20px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05); 
+    }
+    .save-card { background: #F0FBE8; }
+    .relay-header { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: #E24B4A; flex-shrink: 0; transition: background 0.3s; }
+    .dot.on { background: #3B6D11; }
+    
+    .btn-on  { background: #3CC47C; border: none; border-radius: 10px; color: #fff; font-size: 16px; font-weight: 700; padding: 13px; cursor: pointer; width: 100%; font-family: inherit; transition: opacity 0.2s; }
+    .btn-off { background: #F06292; border: none; border-radius: 10px; color: #fff; font-size: 16px; font-weight: 700; padding: 13px; cursor: pointer; width: 100%; font-family: inherit; transition: opacity 0.2s; }
+    .btn-on:hover, .btn-off:hover { opacity: 0.88; }
+    
+    .save-ind { width: 12px; height: 12px; border-radius: 50%; background: #3B9B1D; display: none; animation: pulse 1s infinite alternate; }
+    .status-bar { text-align: center; font-size: 13px; font-weight: 600; color: #888; margin-top: 16px; }
+
+    /* -------------------------------------------------------------
+       3. ส่วนประกอบหน้าใหม่ (หน้ากราฟ & หน้าบันทึกประวัติ)
+       ------------------------------------------------------------- */
+    .chart-container {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      width: 100%;
+      height: 400px;
+    }
+    
+    .history-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      text-align: left;
+    }
+    .data-table th, .data-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #eeeeee;
+      font-size: 15px;
+    }
+    .data-table th { background: #f9fbfd; color: #555; font-weight: 700; }
+    .data-table tr:hover { background: #f8fafc; }
+
+    @keyframes pulse {
+      from { opacity: 0.4; } to { opacity: 1; }
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid rgba(0, 0, 0, 0.05); padding: 20px; }
+      .menu-list { flex-direction: row; flex-wrap: wrap; }
+      .main-content { padding: 20px; }
+    }
+    @media (max-width: 992px) {
+      .top-row { grid-template-columns: 1fr; }
+      .relay-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+      .relay-row { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <h1>Oxygen Sensor Dashboard</h1>
 
-  <!-- ค่าเซนเซอร์ออกซิเจน -->
-  <p class="section-title">เซนเซอร์ออกซิเจน</p>
-  <div class="grid">
-    <div class="card">
-      <div class="value" id="o2pct">--</div>
-      <div class="unit">%</div>
-      <div class="label">ออกซิเจน</div>
+  <aside class="sidebar">
+    <div class="logo-row">
+      <div class="logo-circle">O₂</div>
+      <div class="logo-text">Oxygen Sensor<br>Dashboard</div>
     </div>
-    <div class="card">
-      <div class="value" id="o2mgl">--</div>
-      <div class="unit">mg/L</div>
-      <div class="label">ออกซิเจน</div>
-    </div>
-    <div class="card">
-      <div class="value" id="temp">--</div>
-      <div class="unit">°C</div>
-      <div class="label">อุณหภูมิน้ำ</div>
-    </div>
-  </div>
+    
+    <ul class="menu-list">
+      <li onclick="switchTab('dashboard')"><a id="menu-dashboard" class="menu-item active"><span class="menu-icon">📊</span> แดชบอร์ดหลัก & กราฟ</a></li>
+      <li onclick="switchTab('history')"><a id="menu-history" class="menu-item"><span class="menu-icon">📝</span> ประวัติการบันทึก</a></li>
+      <li onclick="switchTab('settings')"><a id="menu-settings" class="menu-item"><span class="menu-icon">⚙️</span> ตั้งค่าระบบ</a></li>
+    </ul>
+  </aside>
 
-  <!-- ค่าเซนเซอร์อากาศ -->
-  <p class="section-title">เซนเซอร์อากาศ</p>
-  <div class="grid">
-    <div class="card">
-      <div class="value orange" id="temp_air">--</div>
-      <div class="unit">°C</div>
-      <div class="label">อุณหภูมิอากาศ</div>
-    </div>
-    <div class="card">
-      <div class="value green" id="humidity">--</div>
-      <div class="unit">%RH</div>
-      <div class="label">ความชื้น</div>
-    </div>
-  </div>
+  <main class="main-content">
+    
+    <div id="tab-dashboard" class="tab-content active">
+      <header class="welcome-header">
+        <h1>ภาพรวมระบบตรวจวัด</h1>
+        <p>ข้อมูลแบบเรียลไทม์จากเซ็นเซอร์และสถานะอุปกรณ์ในปัจจุบัน</p>
+      </header>
 
-  <!-- ควบคุม Relay -->
-  <p class="section-title">ควบคุม Relay</p>
-  <div class="relay-grid">
-    <div class="relay-card">
-      <div class="relay-title">
-        <span class="dot dot-off" id="dot1"></span>Relay 1
+      <div class="top-row">
+        <div class="card card1">
+          <div>
+            <div class="day-name" id="day-name">ศุกร์</div>
+            <div class="date-time-row">
+              <span class="date-str" id="date-str">5 มิ.ย. 2569</span>
+              <span class="time-str" id="time-str">00:00:00</span>
+            </div>
+          </div>
+          <div class="metrics-row">
+            <div>
+              <div class="metric-val"><span id="temp_air">--</span> <span>°C</span></div>
+              <div class="metric-lbl">อุณหภูมิอากาศ</div>
+            </div>
+            <div>
+              <div class="metric-val"><span id="humidity">--</span> <span>%RH</span></div>
+              <div class="metric-lbl">ความชื้นสัมพัทธ์</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-mid">
+          <div class="sub-card blue">
+            <div class="sub-lbl">อุณหภูมิน้ำ <div class="lbl-icon">&#127777;</div></div>
+            <div class="big-val"><span id="temp">--</span> <span>°C</span></div>
+          </div>
+          <div class="sub-card green">
+            <div class="sub-lbl">ปริมาณออกซิเจน <div class="lbl-icon">&#8776;</div></div>
+            <div class="big-val"><span id="o2pct">--</span> <span>%</span></div>
+          </div>
+        </div>
+
+        <div class="card card-right">
+          <div class="right-lbl">ปริมาณออกซิเจน <div class="lbl-icon">&#8776;</div></div>
+          <div class="mgl-val"><span id="o2mgl">--</span> <span>mg/L</span></div>
+        </div>
       </div>
-      <button class="btn btn-on"  onclick="setRelay(1, true)">เปิด</button>
-      <button class="btn btn-off" onclick="setRelay(1, false)">ปิด</button>
-    </div>
-    <div class="relay-card">
-      <div class="relay-title">
-        <span class="dot dot-off" id="dot2"></span>Relay 2
-      </div>
-      <button class="btn btn-on"  onclick="setRelay(2, true)">เปิด</button>
-      <button class="btn btn-off" onclick="setRelay(2, false)">ปิด</button>
-    </div>
-    <div class="relay-card">
-      <div class="relay-title">
-        <span class="dot dot-off" id="dot3"></span>Relay 3
-      </div>
-      <button class="btn btn-on"  onclick="setRelay(3, true)">เปิด</button>
-      <button class="btn btn-off" onclick="setRelay(3, false)">ปิด</button>
-    </div>
-  </div>
 
-  <!-- ✅ บันทึกข้อมูล -->
-  <p class="section-title">บันทึกข้อมูล</p>
-  <div class="rec-card">
-    <div style="margin-bottom:12px; font-size:16px;">
-      <span id="rec-dot" style="display:inline-block; width:12px; height:12px; border-radius:50%; background:#e94560; margin-right:8px;"></span>
-      <span id="rec-text">ไม่ได้บันทึก</span>
-    </div>
-    <div style="display:flex; gap:10px; justify-content:center;">
-      <button class="btn btn-on"  
-              style="width:160px"
-              onclick="setRecording('start')">
-        ▶ เริ่มบันทึก
-      </button>
-      <button class="btn btn-off" 
-              style="width:160px"
-              onclick="setRecording('stop')">
-        ⏹ หยุดบันทึก
-      </button>
-    </div>
-  </div>
+      <div class="chart-container">
+        <canvas id="realtimeChart"></canvas>
+      </div>
 
-  <div class="status" id="status">กำลังโหลด...</div>
+      <div class="relay-row">
+        <div class="relay-card">
+          <div class="relay-header"><div class="dot" id="dot1"></div> Relay 1</div>
+          <button class="btn-on" onclick="setRelay(1, true)">เปิด</button>
+          <button class="btn-off" onclick="setRelay(1, false)">ปิด</button>
+        </div>
+        <div class="relay-card">
+          <div class="relay-header"><div class="dot" id="dot2"></div> Relay 2</div>
+          <button class="btn-on" onclick="setRelay(2, true)">เปิด</button>
+          <button class="btn-off" onclick="setRelay(2, false)">ปิด</button>
+        </div>
+        <div class="relay-card">
+          <div class="relay-header"><div class="dot" id="dot3"></div> Relay 3</div>
+          <button class="btn-on" onclick="setRelay(3, true)">เปิด</button>
+          <button class="btn-off" onclick="setRelay(3, false)">ปิด</button>
+        </div>
+        <div class="relay-card save-card">
+          <div class="relay-header">
+            <div class="dot" id="save-dot"></div>
+            <div class="save-ind" id="save-ind"></div>
+            <span id="rec-text">ไม่ได้บันทึก</span>
+          </div>
+          <button class="btn-on" onclick="setRecording('start')">เริ่มบันทึก</button>
+          <button class="btn-off" onclick="setRecording('stop')">หยุดบันทึก</button>
+        </div>
+      </div>
+      
+      <div class="status-bar" id="status">กำลังโหลด...</div>
+    </div>
+
+    <div id="tab-history" class="tab-content">
+      <header class="welcome-header">
+        <h1>ประวัติการบันทึกข้อมูล</h1>
+        <p>เรียกดูตารางข้อมูลย้อนหลังที่ระบบบันทึกไว้ในฐานข้อมูล</p>
+      </header>
+      
+      <div class="history-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>วัน-เวลา</th>
+              <th>DO (mg/L)</th>
+              <th>DO (%)</th>
+              <th>อุณหภูมิน้ำ (°C)</th>
+              <th>อุณหภูมิอากาศ (°C)</th>
+              <th>ความชื้น (%RH)</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <tr>
+              <td colspan="6" style="text-align: center; color: #999;">กำลังดึงข้อมูลประวัติย้อนหลัง...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-settings" class="tab-content">
+      <header class="welcome-header">
+        <h1>ตั้งค่าระบบ</h1>
+        <p>กำหนดค่าเกณฑ์การเตือนภัยและตั้งค่าการทำงานอัตโนมัติ</p>
+      </header>
+      <div class="card" style="min-height: auto;">
+        <p style="color: #666;">โครงสร้างหน้าต่างสำหรับการปรับแต่งค่ากล่องเซ็นเซอร์ IoT ในอนาคต...</p>
+      </div>
+    </div>
+
+  </main>
 
   <script>
-    function setRelay(num, state) {
+    /* -------------------------------------------------------------
+       JavaScript สำหรับสลับหน้าเมนูซ้ายมือ (Sidebar Tab Router)
+       ------------------------------------------------------------- */
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+      document.getElementById(`menu-${tabId}`).classList.add('active');
+      
+      if(tabId === 'history') { fetchHistoryData(); }
+    }
+
+    /* -------------------------------------------------------------
+       สร้างและอัปเดตกราฟข้อมูลเรียลไทม์ (Chart.js Configuration)
+       ------------------------------------------------------------- */
+    const ctx = document.getElementById('realtimeChart').getContext('2d');
+    const realtimeChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [], // เวลาสแตมป์แกน X
+        datasets: [{
+          label: 'ปริมาณออกซิเจน DO (mg/L)',
+          data: [],
+          borderColor: '#3B8FD4',
+          backgroundColor: 'rgba(59, 143, 212, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, max: 20 }
+        }
+      }
+    });
+
+    function addChartData(time, val) {
+      if (realtimeChart.data.labels.length > 10) {
+        realtimeChart.data.labels.shift();
+        realtimeChart.data.datasets[0].data.shift();
+      }
+      realtimeChart.data.labels.push(time);
+      realtimeChart.data.datasets[0].data.push(val);
+      realtimeChart.chart.update();
+    }
+
+    /* -------------------------------------------------------------
+       ระบบเวลาและเชื่อมต่อข้อมูลเดิมของ Backend
+       ------------------------------------------------------------- */
+    const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+    const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function tick(){
+      const now = new Date();
+      document.getElementById('day-name').textContent = days[now.getDay()];
+      document.getElementById('date-str').textContent = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()+543}`;
+      document.getElementById('time-str').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+    tick(); setInterval(tick, 1000);
+
+    function updateDot(num, state){
+      const dot = document.getElementById(`dot${num}`);
+      if(dot) dot.className = state ? 'dot on' : 'dot';
+    }
+
+    function setRelay(num, state){
       fetch(`/api/relay/${num}/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state: state })
-      }).then(r => r.json()).then(d => {
-        updateDot(num, state);
-      });
+      }).then(r => r.json()).then(() => { updateDot(num, state); });
     }
 
-    function updateDot(num, state) {
-      const dot = document.getElementById(`dot${num}`);
-      dot.className = `dot ${state ? 'dot-on' : 'dot-off'}`;
+    function updateRecordingUI(recording){
+      const dot  = document.getElementById('save-dot');
+      const ind  = document.getElementById('save-ind');
+      const text = document.getElementById('rec-text');
+      if(recording){
+        dot.style.display = 'none';
+        ind.style.display = 'block';
+        text.textContent  = 'กำลังบันทึก';
+      } else {
+        dot.style.display = '';
+        ind.style.display = 'none';
+        text.textContent  = 'ไม่ได้บันทึก';
+      }
     }
 
-    function setRecording(action) {
+    function setRecording(action){
       fetch('/api/recording/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: action })
-      }).then(r => r.json()).then(d => {
-        updateRecordingUI(d.recording);
-      });
+      }).then(r => r.json()).then(d => { updateRecordingUI(d.recording); });
     }
 
-    function updateRecordingUI(recording) {
-      const dot  = document.getElementById('rec-dot');
-      const text = document.getElementById('rec-text');
-      if (recording) {
-        dot.style.background = '#4caf50';
-        text.innerText       = '🔴 กำลังบันทึก...';
-      } else {
-        dot.style.background = '#e94560';
-        text.innerText       = '⏹ ไม่ได้บันทึก';
-      }
-    }
-
-    function fetchData() {
+    function fetchData(){
       fetch('/api/latest/')
         .then(r => r.json())
         .then(d => {
-          if (d.error && !d.recording) return;
-          document.getElementById('o2pct').innerText    = d.o2_pct    != null ? d.o2_pct.toFixed(2)   : '--';
-          document.getElementById('o2mgl').innerText    = d.o2_mgl    != null ? d.o2_mgl.toFixed(2)   : '--';
-          document.getElementById('temp').innerText     = d.temp      != null ? d.temp.toFixed(1)     : '--';
-          document.getElementById('temp_air').innerText = d.temp_air  != null ? d.temp_air.toFixed(1) : '--';
-          document.getElementById('humidity').innerText = d.humidity  != null ? d.humidity.toFixed(1) : '--';
+          if(d.error && !d.recording) return;
+          document.getElementById('o2pct').textContent    = d.o2_pct   != null ? d.o2_pct.toFixed(2)   : '--';
+          document.getElementById('o2mgl').textContent    = d.o2_mgl   != null ? d.o2_mgl.toFixed(2)   : '--';
+          document.getElementById('temp').textContent     = d.temp     != null ? d.temp.toFixed(1)     : '--';
+          document.getElementById('temp_air').textContent = d.temp_air != null ? d.temp_air.toFixed(1) : '--';
+          document.getElementById('humidity').textContent = d.humidity != null ? d.humidity.toFixed(1) : '--';
           updateDot(1, d.relay1);
           updateDot(2, d.relay2);
           updateDot(3, d.relay3);
-          if (d.timestamp) {
-            document.getElementById('status').innerText = `อัปเดตล่าสุด: ${d.timestamp}`;
+          if(d.timestamp){
+            document.getElementById('status').textContent = `อัปเดตล่าสุด: ${d.timestamp}`;
+            if(d.o2_mgl != null) {
+              const justTime = d.timestamp.split(' ')[1] || d.timestamp;
+              addChartData(justTime, d.o2_mgl);
+            }
           }
-          if (d.recording !== undefined) {
-            updateRecordingUI(d.recording);
+          if(d.recording !== undefined){ updateRecordingUI(d.recording); }
+        });
+    }
+
+    /* -------------------------------------------------------------
+       ฟังก์ชันดึงประวัติย้อนหลังมาเติมใส่ตาราง (History Loader)
+       ------------------------------------------------------------- */
+    function fetchHistoryData() {
+      // ดึงข้อมูลประวัติจากหลังบ้าน (สามารถปรับเปลี่ยน endpoint URL ตามสเปคจริงของ django views คุณได้เลย)
+      fetch('/api/history/')
+        .then(r => r.json())
+        .then(data => {
+          const tbody = document.getElementById('history-table-body');
+          tbody.innerHTML = '';
+          if(!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">ไม่พบข้อมูลประวัติบันทึกในระบบ</td></tr>';
+            return;
           }
+          data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${row.timestamp}</td>
+              <td>${row.o2_mgl ? row.o2_mgl.toFixed(2) : '--'}</td>
+              <td>${row.o2_pct ? row.o2_pct.toFixed(2) : '--'}</td>
+              <td>${row.temp ? row.temp.toFixed(1) : '--'}</td>
+              <td>${row.temp_air ? row.temp_air.toFixed(1) : '--'}</td>
+              <td>${row.humidity ? row.humidity.toFixed(1) : '--'}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }).catch(() => {
+          document.getElementById('history-table-body').innerHTML = '<tr><td colspan="6" style="text-align:center; color: red;">ไม่สามารถติดต่อเซิร์ฟเวอร์เพื่อดึงประวัติได้ (ตรวจสอบ /api/history/)</td></tr>';
         });
     }
 

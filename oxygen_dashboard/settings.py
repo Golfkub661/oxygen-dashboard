@@ -17,13 +17,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'channels',
+    'corsheaders',   # ✅ เพิ่ม
     'oxygen_app',
 ]
 
 # ─── Middleware ───────────────────────────────────────────────
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # ✅ ต้องอยู่บนสุด
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ static files on Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -92,4 +94,11 @@ USE_TZ = True
 # ─── MQTT ──────────────────────────────────────────────────────
 MQTT_BROKER = os.environ.get('MQTT_BROKER', 'broker.hivemq.com')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', '1883'))
-MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'sensor/oxygen')  # ✅ แก้ให้ตรง ESP32
+MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'sensor/oxygen')
+
+# ─── CORS ──────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",        # ✅ Next.js dev
+    "https://your-app.vercel.app",  # ✅ ใส่ URL Vercel จริงทีหลัง
+]
+CORS_ALLOW_CREDENTIALS = True
