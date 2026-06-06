@@ -5,5 +5,6 @@ urlpatterns = [
     path('', views.dashboard, name='dashboard'),
     path('api/latest/', views.api_latest, name='api_latest'),
     path('api/relay/<int:relay_num>/', views.api_relay, name='api_relay'),
-    path('api/recording/', views.api_recording, name='api_recording'),  # ✅ เพิ่ม
+    path('api/recording/', views.api_recording, name='api_recording'),
+    path('api/history/', views.api_history, name='api_history'),  # ✅ เพิ่ม
 ]

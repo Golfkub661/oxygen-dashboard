@@ -11,7 +11,6 @@ def dashboard(request):
     return render(request, 'dashboard.html', {'latest': latest})
 
 def api_latest(request):
-    # ✅ ดึงจาก memory ก่อน (อัปเดตเสมอแม้ไม่ได้ recording)
     data = mqtt_client.latest_data
     if data:
         return JsonResponse({
@@ -27,7 +26,6 @@ def api_latest(request):
             'recording': mqtt_client.is_recording,
         })
 
-    # ถ้ายังไม่มีข้อมูลใหม่ใน memory ดึงจาก DB แทน
     latest = OxygenReading.objects.order_by('-timestamp').first()
     if latest:
         local_time = timezone.localtime(latest.timestamp)
@@ -75,3 +73,22 @@ def api_recording(request):
             mqtt_client.is_recording = False
         return JsonResponse({'recording': mqtt_client.is_recording})
     return JsonResponse({'recording': mqtt_client.is_recording})
+
+def api_history(request):
+    limit = int(request.GET.get('limit', 100))
+    readings = OxygenReading.objects.order_by('-timestamp')[:limit]
+    data = []
+    for r in readings:
+        local_time = timezone.localtime(r.timestamp)
+        data.append({
+            'o2_pct':    r.value,
+            'o2_mgl':    r.mgl,
+            'temp':      r.temperature,
+            'temp_air':  r.temp_air,
+            'humidity':  r.humidity,
+            'relay1':    r.relay1,
+            'relay2':    r.relay2,
+            'relay3':    r.relay3,
+            'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
+        })
+    return JsonResponse({'data': data})

@@ -7,34 +7,61 @@ const API_URL = 'https://oxygen-dashboard-6wgh.onrender.com'
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recording, setRecording] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/latest/`)
-        const json = await res.json()
-        setData(json)
-        setLoading(false)
-      } catch (err) {
-        console.error(err)
-      }
-    }
-
+  try {
+    const res = await fetch(`${API_URL}/api/latest/`)
+    if (!res.ok) return  // ถ้า Render หลับ ไม่ต้อง parse JSON
+    const json = await res.json()
+    setData(json)
+    setRecording(json.recording ?? false)
+    setLoading(false)
+  } catch (err) {
+    console.error(err)
+  }
+}
     fetchData()
     const interval = setInterval(fetchData, 2000)
     return () => clearInterval(interval)
   }, [])
 
+  const toggleRecording = async () => {
+    try {
+      await fetch(`${API_URL}/api/recording/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recording: !recording }),
+      })
+      setRecording(!recording)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   if (loading) return <div className="p-8 text-white">กำลังโหลด...</div>
 
   return (
     <main className="min-h-screen bg-gray-900 text-white p-8">
-      <h1 className="text-2xl font-bold mb-6">🐟 Oxygen Dashboard</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">🐟 Oxygen Dashboard</h1>
+        <button
+          onClick={toggleRecording}
+          className={`px-6 py-2 rounded-xl font-semibold ${
+            recording
+              ? 'bg-red-500 hover:bg-red-600'
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          {recording ? '⏹ หยุดบันทึก' : '⏺ เริ่มบันทึก'}
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <Card title="O2 (%)" value={data?.value} unit="%" color="text-green-400" />
-        <Card title="O2 (mg/L)" value={data?.mgl} unit="mg/L" color="text-blue-400" />
-        <Card title="อุณหภูมิน้ำ" value={data?.temperature} unit="°C" color="text-yellow-400" />
+        <Card title="O2 (%)" value={data?.o2_pct} unit="%" color="text-green-400" />
+        <Card title="O2 (mg/L)" value={data?.o2_mgl} unit="mg/L" color="text-blue-400" />
+        <Card title="อุณหภูมิน้ำ" value={data?.temp} unit="°C" color="text-yellow-400" />
         <Card title="อุณหภูมิอากาศ" value={data?.temp_air} unit="°C" color="text-orange-400" />
         <Card title="ความชื้น" value={data?.humidity} unit="%" color="text-purple-400" />
       </div>
