@@ -99,6 +99,7 @@ MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'sensor/oxygen')
 # ─── CORS ──────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://oxygen-frontend-qwcibdqmv-golfk001-s-projects.vercel.app",  # ✅ Vercel
+    "https://oxygen-frontend-qwcibdqmv-golfk001-s-projects.vercel.app",
+    "https://oxygen-frontend-tau.vercel.app",  # ✅ เพิ่ม URL ใหม่
 ]
 CORS_ALLOW_CREDENTIALS = True
