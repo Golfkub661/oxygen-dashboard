@@ -77,36 +77,53 @@ def api_recording(request):
         return JsonResponse({'recording': mqtt_client.is_recording})
     return JsonResponse({'recording': mqtt_client.is_recording})
 
+
+# 🔥 [แก้ไขส่วนนี้] ฟังก์ชัน api_history คำนวณช่วงเวลาใหม่ให้ฉลาดและยืดหยุ่นขึ้น
 def api_history(request):
     hours = int(request.GET.get('hours', 1))
     date_str = request.GET.get('date', None)
 
     if date_str:
-        # กรองตามวันที่เลือก
         try:
-            selected_date = datetime.strptime(date_str, '%d/%m/%Y')
-            selected_date = timezone.make_aware(selected_date)
-            since = selected_date
-            until = selected_date + timedelta(days=1)
+            # 1. แปลง String วันที่ที่ได้มาจากฝั่ง Next.js (%d/%m/%Y)
+            parsed_date = datetime.strptime(date_str, '%d/%m/%Y').date()
+            
+            # ดึงเวลาปัจจุบันในรูปแบบ Local Timezone ของระบบ
+            current_local = timezone.localtime(timezone.now())
+            
+            # 2. ตรวจสอบเงื่อนไขวันเพื่อระบุจุดสิ้นสุดเวลา (until)
+            if parsed_date == current_local.date():
+                # ถ้าผู้ใช้เลือกเป็น "วันนี้" ให้ดึงจนถึงเวลาปัจจุบัน ณ วินาทีนี้เลย
+                until = current_local
+            else:
+                # ถ้าผู้ใช้เลือก "วันในอดีต" ให้ดึงจนถึงสิ้นสุดวันนั้น (23:59:59) เพื่อให้ได้ข้อมูลครบถ้วน
+                end_of_day = datetime.combine(parsed_date, datetime.max.time())
+                until = timezone.make_aware(end_of_day)
+                
+            # 3. จุดเริ่มต้น (since) คือเวลาเอาตัวแปร until ตั้ง แล้วลบย้อนกลับตามจำนวนชั่วโมง (hours)
+            since = until - timedelta(hours=hours)
+            
+            # ดึงข้อมูลจากฐานข้อมูลตามช่วงเวลาจริงที่คำนวณได้
             readings = OxygenReading.objects.filter(
                 timestamp__gte=since,
-                timestamp__lt=until
+                timestamp__lte=until
             ).order_by('timestamp')
-        except:
+            
+        except Exception as e:
+            print(f"Error filtering history with date: {e}")
             return JsonResponse({'data': [], 'total': 0})
     else:
-        # กรองตาม hours
+        # ถ้าหน้าบ้านไม่ได้ส่งค่า date_str มาเลย (โหมดเริ่มต้นหน้าเว็บ) ให้ดึงย้อนหลังจากปัจจุบันปกติ
         since = timezone.now() - timedelta(hours=hours)
         readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
 
-    # จัดกลุ่มทุก 1 นาที
+    # --- ส่วนของการจัดกลุ่มเวลา (Grouping) และจัดเรียงข้อมูลคงเดิม ---
     groups = defaultdict(list)
     for r in readings:
         local_time = timezone.localtime(r.timestamp)
         minute_key = local_time.strftime('%d/%m/%Y %H:%M')
         groups[minute_key].append(r)
 
-    # คำนวณเฉลี่ยแต่ละนาที
     data = []
     for minute_key in sorted(groups.keys()):
         group = groups[minute_key]
