@@ -1,5 +1,6 @@
 'use client'
 
+
 import { useState, useEffect } from 'react'
 import { RiArrowDownLine, RiArrowUpLine, RiArrowDownSLine, RiCalendar2Line, RiTimeLine } from '@remixicon/react'
 import {
@@ -24,7 +25,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
+
 const API_URL = 'https://oxygen-dashboard-6wgh.onrender.com'
+
 
 const columns = [
   {
@@ -83,12 +86,10 @@ export default function HistoryPage() {
   const [hours, setHours] = useState(1)
   const [availableDates, setAvailableDates] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
- 
   // 🎯 ใช้ state นี้เพื่อบันทึกว่าผู้ใช้คลิกเปลี่ยนอะไร "ล่าสุด" (ดึงข้อมูลตามตัวนั้นทันที)
   const [lastActiveFilter, setLastActiveFilter] = useState('hours') // 'hours' | 'date'
- 
   const [isMounted, setIsMounted] = useState(false)
-
+  
   // ดึงวันที่มีข้อมูลทั้งหมดจาก API
   useEffect(() => {
     setIsMounted(true)
@@ -104,6 +105,7 @@ export default function HistoryPage() {
     }
     fetchDates()
   }, [])
+
 
   // ดึงข้อมูลตารางตามเงื่อนไขตัวกรองล่าสุด
   useEffect(() => {
@@ -132,6 +134,7 @@ export default function HistoryPage() {
     }
     fetchHistory()
   }, [hours, selectedDate, lastActiveFilter]) // คอยจับตาดูตัวแปรคัดกรองล่าสุด
+
 
   const table = useReactTable({
     data,
@@ -197,6 +200,7 @@ export default function HistoryPage() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+
 
             {/* Dropdown 2: เลือกช่วงเวลา */}
             <div className="inline-flex items-center rounded-xl shadow-sm border border-gray-200 overflow-hidden">
