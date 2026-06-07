@@ -5,6 +5,8 @@ from django.utils import timezone
 from .models import OxygenReading
 from . import mqtt_client
 import json
+from datetime import timedelta
+from collections import defaultdict
 
 def dashboard(request):
     latest = OxygenReading.objects.order_by('-timestamp').first()
@@ -75,20 +77,33 @@ def api_recording(request):
     return JsonResponse({'recording': mqtt_client.is_recording})
 
 def api_history(request):
-    limit = int(request.GET.get('limit', 100))
-    readings = OxygenReading.objects.order_by('-timestamp')[:limit]
-    data = []
+    hours = int(request.GET.get('hours', 1))
+    since = timezone.now() - timedelta(hours=hours)
+    readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
+
+    # จัดกลุ่มทุก 1 นาที
+    groups = defaultdict(list)
     for r in readings:
         local_time = timezone.localtime(r.timestamp)
+        # key = "DD/MM/YYYY HH:MM" ตัด second ออก
+        minute_key = local_time.strftime('%d/%m/%Y %H:%M')
+        groups[minute_key].append(r)
+
+    # คำนวณเฉลี่ยแต่ละนาที
+    data = []
+    for minute_key in sorted(groups.keys()):
+        group = groups[minute_key]
+        count = len(group)
         data.append({
-            'o2_pct':    r.value,
-            'o2_mgl':    r.mgl,
-            'temp':      r.temperature,
-            'temp_air':  r.temp_air,
-            'humidity':  r.humidity,
-            'relay1':    r.relay1,
-            'relay2':    r.relay2,
-            'relay3':    r.relay3,
-            'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
+            'timestamp': minute_key,
+            'o2_pct':   round(sum(r.value       for r in group) / count, 2),
+            'o2_mgl':   round(sum(r.mgl         for r in group) / count, 2),
+            'temp':     round(sum(r.temperature for r in group) / count, 2),
+            'temp_air': round(sum(r.temp_air    for r in group) / count, 2),
+            'humidity': round(sum(r.humidity    for r in group) / count, 2),
         })
-    return JsonResponse({'data': data})
+
+    # เรียงจากใหม่ไปเก่า
+    data.reverse()
+
+    return JsonResponse({'data': data, 'hours': hours, 'total': len(data)})

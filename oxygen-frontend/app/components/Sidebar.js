@@ -27,7 +27,7 @@ export default function DashboardSidebar() {
   }))
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="bg-gray-100 border-none">
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
