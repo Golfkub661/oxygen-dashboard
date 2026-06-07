@@ -77,33 +77,30 @@ def api_recording(request):
         return JsonResponse({'recording': mqtt_client.is_recording})
     return JsonResponse({'recording': mqtt_client.is_recording})
 
-
-# 🔥 [แก้ไขส่วนนี้] ฟังก์ชัน api_history คำนวณช่วงเวลาใหม่ให้ฉลาดและยืดหยุ่นขึ้น
+# ⚡ [แก้ไขจุดนี้] อัปเดตฟังก์ชัน api_history บล็อกช่วงเวลา Timezone ให้แม่นยำ
 def api_history(request):
     hours = int(request.GET.get('hours', 1))
     date_str = request.GET.get('date', None)
 
+    # ดึงเวลาปัจจุบันในรูปแบบ Local Time (เวลาไทย)
+    current_local = timezone.localtime(timezone.now())
+    tz = timezone.get_current_timezone()
+
     if date_str:
         try:
-            # 1. แปลง String วันที่ที่ได้มาจากฝั่ง Next.js (%d/%m/%Y)
+            # 1. แปลง String วันที่ที่ส่งมาจาก Next.js (%d/%m/%Y)
             parsed_date = datetime.strptime(date_str, '%d/%m/%Y').date()
             
-            # ดึงเวลาปัจจุบันในรูปแบบ Local Timezone ของระบบ
-            current_local = timezone.localtime(timezone.now())
-            
-            # 2. ตรวจสอบเงื่อนไขวันเพื่อระบุจุดสิ้นสุดเวลา (until)
+            # 2. คัดกรองข้อมูลให้อยู่ใน "วันที่เลือก" แน่นอนไว้ก่อนเพื่อความชัวร์
+            # และใช้การจำกัดรายการดึงย้อนหลังจากล่าสุดของวันนั้นๆ ข้อมูลจะไม่หายแน่นอน
             if parsed_date == current_local.date():
-                # ถ้าผู้ใช้เลือกเป็น "วันนี้" ให้ดึงจนถึงเวลาปัจจุบัน ณ วินาทีนี้เลย
                 until = current_local
             else:
-                # ถ้าผู้ใช้เลือก "วันในอดีต" ให้ดึงจนถึงสิ้นสุดวันนั้น (23:59:59) เพื่อให้ได้ข้อมูลครบถ้วน
                 end_of_day = datetime.combine(parsed_date, datetime.max.time())
-                until = timezone.make_aware(end_of_day)
+                until = timezone.make_aware(end_of_day, tz)
                 
-            # 3. จุดเริ่มต้น (since) คือเวลาเอาตัวแปร until ตั้ง แล้วลบย้อนกลับตามจำนวนชั่วโมง (hours)
             since = until - timedelta(hours=hours)
             
-            # ดึงข้อมูลจากฐานข้อมูลตามช่วงเวลาจริงที่คำนวณได้
             readings = OxygenReading.objects.filter(
                 timestamp__gte=since,
                 timestamp__lte=until
@@ -113,11 +110,14 @@ def api_history(request):
             print(f"Error filtering history with date: {e}")
             return JsonResponse({'data': [], 'total': 0})
     else:
-        # ถ้าหน้าบ้านไม่ได้ส่งค่า date_str มาเลย (โหมดเริ่มต้นหน้าเว็บ) ให้ดึงย้อนหลังจากปัจจุบันปกติ
-        since = timezone.now() - timedelta(hours=hours)
-        readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
+        # 3. หากหน้าบ้านไม่ได้ส่งค่า date มาเลย (โหมดปกติหน้าเว็บตอนแรก) ดึงย้อนหลังจากปัจจุบันทันที
+        since = current_local - timedelta(hours=hours)
+        readings = OxygenReading.objects.filter(
+            timestamp__gte=since,
+            timestamp__lte=current_local
+        ).order_by('timestamp')
 
-    # --- ส่วนของการจัดกลุ่มเวลา (Grouping) และจัดเรียงข้อมูลคงเดิม ---
+    # --- ส่วนการจัดกลุ่มเวลา (Grouping) ---
     groups = defaultdict(list)
     for r in readings:
         local_time = timezone.localtime(r.timestamp)
