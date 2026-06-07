@@ -5,8 +5,9 @@ from django.utils import timezone
 from .models import OxygenReading
 from . import mqtt_client
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime
 from collections import defaultdict
+from django.db.models.functions import TruncDate
 
 def dashboard(request):
     latest = OxygenReading.objects.order_by('-timestamp').first()
@@ -78,14 +79,30 @@ def api_recording(request):
 
 def api_history(request):
     hours = int(request.GET.get('hours', 1))
-    since = timezone.now() - timedelta(hours=hours)
-    readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
+    date_str = request.GET.get('date', None)
+
+    if date_str:
+        # กรองตามวันที่เลือก
+        try:
+            selected_date = datetime.strptime(date_str, '%d/%m/%Y')
+            selected_date = timezone.make_aware(selected_date)
+            since = selected_date
+            until = selected_date + timedelta(days=1)
+            readings = OxygenReading.objects.filter(
+                timestamp__gte=since,
+                timestamp__lt=until
+            ).order_by('timestamp')
+        except:
+            return JsonResponse({'data': [], 'total': 0})
+    else:
+        # กรองตาม hours
+        since = timezone.now() - timedelta(hours=hours)
+        readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
 
     # จัดกลุ่มทุก 1 นาที
     groups = defaultdict(list)
     for r in readings:
         local_time = timezone.localtime(r.timestamp)
-        # key = "DD/MM/YYYY HH:MM" ตัด second ออก
         minute_key = local_time.strftime('%d/%m/%Y %H:%M')
         groups[minute_key].append(r)
 
@@ -103,7 +120,21 @@ def api_history(request):
             'humidity': round(sum(r.humidity    for r in group) / count, 2),
         })
 
-    # เรียงจากใหม่ไปเก่า
     data.reverse()
-
     return JsonResponse({'data': data, 'hours': hours, 'total': len(data)})
+
+def api_available_dates(request):
+    dates = (
+        OxygenReading.objects
+        .annotate(date=TruncDate('timestamp'))
+        .values_list('date', flat=True)
+        .distinct()
+        .order_by('-date')
+    )
+    local_dates = []
+    for d in dates:
+        aware = timezone.make_aware(datetime.combine(d, datetime.min.time()))
+        local = timezone.localtime(aware)
+        local_dates.append(local.strftime('%d/%m/%Y'))
+
+    return JsonResponse({'dates': local_dates})
