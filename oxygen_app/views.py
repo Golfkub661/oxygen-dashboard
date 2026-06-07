@@ -77,49 +77,27 @@ def api_recording(request):
         return JsonResponse({'recording': mqtt_client.is_recording})
     return JsonResponse({'recording': mqtt_client.is_recording})
 
-
-# 🌟 [จุดที่แก้ไข] ปรับเปลี่ยนตรรกะการคํานวณให้สอดคล้องกับ Timezone ไทย
 def api_history(request):
     hours = int(request.GET.get('hours', 1))
     date_str = request.GET.get('date', None)
 
-    # ดึงเวลาปัจจุบันอ้างอิงเขตเวลาไทย (Local Time)
-    current_local = timezone.localtime(timezone.now())
-    current_tz = timezone.get_current_timezone()
-
     if date_str:
         try:
-            # 1. แปลงสตริงวันที่เป็น Object date
-            parsed_date = datetime.strptime(date_str, '%d/%m/%Y').date()
-            
-            # 2. หาจุดสิ้นสุดของเวลาค้นหา (until)
-            if parsed_date == current_local.date():
-                # ถ้าเลือกวันปัจจุบัน ให้นับย้อนกลับไปจาก "เวลานาทีนี้" เลย
-                until = current_local
-            else:
-                # ถ้าเลือกวันในอดีต ให้นับย้อนกลับไปจากเวลา "สิ้นวันนั้น" (23:59:59 เวลาไทย)
-                end_of_day = datetime.combine(parsed_date, datetime.max.time())
-                until = timezone.make_aware(end_of_day, current_tz)
-                
-            since = until - timedelta(hours=hours)
-            
+            selected_date = datetime.strptime(date_str, '%d/%m/%Y')
+            aware_date = timezone.make_aware(selected_date)
+            # ✅ ใช้ทั้ง date และ hours พร้อมกัน
+            since = aware_date
+            until = aware_date + timedelta(hours=hours)
             readings = OxygenReading.objects.filter(
                 timestamp__gte=since,
-                timestamp__lte=until
+                timestamp__lt=until
             ).order_by('timestamp')
-            
-        except Exception as e:
-            print(f"Error filtering history with date: {e}")
+        except:
             return JsonResponse({'data': [], 'total': 0})
     else:
-        # 3. กรณีหน้าเว็บโหลดครั้งแรก (ไม่ระบุวัน) ดึงย้อนจากเวลาปัจจุบันทันที ปิดช่องว่าง lte ไว้ให้ปลอดภัย
-        since = current_local - timedelta(hours=hours)
-        readings = OxygenReading.objects.filter(
-            timestamp__gte=since,
-            timestamp__lte=current_local
-        ).order_by('timestamp')
+        since = timezone.now() - timedelta(hours=hours)
+        readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
 
-    # --- ส่วนการจัดกลุ่มข้อมูลย่อยรายนาที (Grouping) ---
     groups = defaultdict(list)
     for r in readings:
         local_time = timezone.localtime(r.timestamp)
