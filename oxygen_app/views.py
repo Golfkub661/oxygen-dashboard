@@ -82,12 +82,12 @@ def api_history(request):
     date_str = request.GET.get('date', None)
 
     if date_str:
+        # กรองตามวันที่เลือก
         try:
             selected_date = datetime.strptime(date_str, '%d/%m/%Y')
-            aware_date = timezone.make_aware(selected_date)
-            # ✅ ใช้ทั้ง date และ hours พร้อมกัน
-            since = aware_date
-            until = aware_date + timedelta(hours=hours)
+            selected_date = timezone.make_aware(selected_date)
+            since = selected_date
+            until = selected_date + timedelta(days=1)
             readings = OxygenReading.objects.filter(
                 timestamp__gte=since,
                 timestamp__lt=until
@@ -95,15 +95,18 @@ def api_history(request):
         except:
             return JsonResponse({'data': [], 'total': 0})
     else:
+        # กรองตาม hours
         since = timezone.now() - timedelta(hours=hours)
         readings = OxygenReading.objects.filter(timestamp__gte=since).order_by('timestamp')
 
+    # จัดกลุ่มทุก 1 นาที
     groups = defaultdict(list)
     for r in readings:
         local_time = timezone.localtime(r.timestamp)
         minute_key = local_time.strftime('%d/%m/%Y %H:%M')
         groups[minute_key].append(r)
 
+    # คำนวณเฉลี่ยแต่ละนาที
     data = []
     for minute_key in sorted(groups.keys()):
         group = groups[minute_key]
