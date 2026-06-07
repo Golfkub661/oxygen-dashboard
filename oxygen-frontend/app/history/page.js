@@ -83,9 +83,13 @@ export default function HistoryPage() {
   const [hours, setHours] = useState(1)
   const [availableDates, setAvailableDates] = useState([])
   const [selectedDate, setSelectedDate] = useState(null)
+ 
+  // 🎯 ใช้ state นี้เพื่อบันทึกว่าผู้ใช้คลิกเปลี่ยนอะไร "ล่าสุด" (ดึงข้อมูลตามตัวนั้นทันที)
+  const [lastActiveFilter, setLastActiveFilter] = useState('hours') // 'hours' | 'date'
+ 
   const [isMounted, setIsMounted] = useState(false)
 
-  // ดึงวันที่มีข้อมูลทั้งหมดจาก API (รันรอบเดียวตอนเปิดหน้าเว็บ)
+  // ดึงวันที่มีข้อมูลทั้งหมดจาก API
   useEffect(() => {
     setIsMounted(true)
     const fetchDates = async () => {
@@ -101,15 +105,21 @@ export default function HistoryPage() {
     fetchDates()
   }, [])
 
-  // ⚡ ดึงข้อมูลจาก API ทันทีเมื่อค่า hours หรือ selectedDate ขยับ
+  // ดึงข้อมูลตารางตามเงื่อนไขตัวกรองล่าสุด
   useEffect(() => {
     const fetchHistory = async () => {
       setLoading(true)
       try {
-        let url = `${API_URL}/api/history/?hours=${hours}`
-        if (selectedDate) {
-          url += `&date=${selectedDate}`
+        let url = `${API_URL}/api/history/`
+       
+        // ถ้าระบบจำได้ว่าผู้ใช้เพิ่งคลิกเลือก "วันที่" ล่าสุด ให้ดึงข้อมูลวันที่
+        if (lastActiveFilter === 'date' && selectedDate) {
+          url += `?date=${selectedDate}`
+        } else {
+          // ถ้าเพิ่งคลิกเปลี่ยน "รายชั่วโมง" (เช่น กด 1 -> 6 ชม.) ให้ยิงค้นหาตามชั่วโมงทันที
+          url += `?hours=${hours}`
         }
+       
         const res = await fetch(url)
         if (!res.ok) return
         const json = await res.json()
@@ -121,7 +131,7 @@ export default function HistoryPage() {
       }
     }
     fetchHistory()
-  }, [hours, selectedDate]) // คอยจับตาดูความเปลี่ยนแปลงของทั้งสองตัวแปร
+  }, [hours, selectedDate, lastActiveFilter]) // คอยจับตาดูตัวแปรคัดกรองล่าสุด
 
   const table = useReactTable({
     data,
@@ -151,8 +161,8 @@ export default function HistoryPage() {
           <h1 className="text-2xl font-bold text-gray-800 tracking-tight">ประวัติการบันทึก</h1>
 
           <div className="flex items-center gap-3">
-
-            {/* Dropdown เลือกวันที่ */}
+           
+            {/* Dropdown 1: เลือกวันที่ */}
             <div className="inline-flex items-center rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <span className="px-3 py-2 bg-white border-r border-gray-200">
                 <RiCalendar2Line className="size-5 text-gray-400" />
@@ -161,7 +171,7 @@ export default function HistoryPage() {
                 <DropdownMenuTrigger asChild>
                   <button className={cn(
                     "flex items-center gap-2 px-4 py-2 bg-white text-sm font-semibold transition-colors hover:bg-gray-50",
-                    selectedDate ? "text-emerald-600" : "text-gray-700"
+                    lastActiveFilter === 'date' ? "text-emerald-600" : "text-gray-700"
                   )}>
                     {selectedDate ?? 'เลือกวันที่'}
                     <RiArrowDownSLine className="size-4 text-gray-500" />
@@ -175,7 +185,10 @@ export default function HistoryPage() {
                       <DropdownMenuItem
                         key={date}
                         className={cn(selectedDate === date && "bg-emerald-50 text-emerald-600 font-medium")}
-                        onClick={() => setSelectedDate(date)}
+                        onClick={() => {
+                          setSelectedDate(date)
+                          setLastActiveFilter('date') // บอกระบบว่าต้องการดูข้อมูลแบบระบุวันที่
+                        }}
                       >
                         {date}
                       </DropdownMenuItem>
@@ -185,15 +198,17 @@ export default function HistoryPage() {
               </DropdownMenu>
             </div>
 
-            {/* Dropdown เลือกช่วงเวลา */}
+            {/* Dropdown 2: เลือกช่วงเวลา */}
             <div className="inline-flex items-center rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <span className="px-3 py-2 bg-white border-r border-gray-200">
                 <RiTimeLine className="size-5 text-gray-400" />
               </span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  {/* 🎨 ปรับปรุงให้ปุ่มนี้เปลี่ยนเป็นสีเขียวด้วยเวลาที่มีการเลือกเพื่อความสอดคล้อง */}
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white text-sm font-semibold text-emerald-600 transition-colors hover:bg-gray-50">
+                  <button className={cn(
+                    "flex items-center gap-2 px-4 py-2 bg-white text-sm font-semibold transition-colors hover:bg-gray-50",
+                    lastActiveFilter === 'hours' ? "text-emerald-600" : "text-gray-700"
+                  )}>
                     {getHoursLabel(hours)}
                     <RiArrowDownSLine className="size-4 text-gray-500" />
                   </button>
@@ -203,7 +218,10 @@ export default function HistoryPage() {
                     <DropdownMenuItem
                       key={h}
                       className={cn(hours === h && "bg-emerald-50 text-emerald-600 font-medium")}
-                      onClick={() => setHours(h)}
+                      onClick={() => {
+                        setHours(h)
+                        setLastActiveFilter('hours') // ⚡ สั่งให้ระบบเปลี่ยนไปดึงข้อมูลตามชั่วโมงทันทีโดยไม่ต้องคลิกวันที่ใหม่!
+                      }}
                     >
                       {h === 1 ? '1 ชม.' : h === 6 ? '6 ชม.' : '24 ชม.'}
                     </DropdownMenuItem>
@@ -277,9 +295,7 @@ export default function HistoryPage() {
         {data.length > 0 && (
           <p className="text-sm font-semibold text-gray-400 text-right">
             แสดง {data.length} รายการ (เฉลี่ยทุก 1 นาที)
-            {selectedDate
-              ? ` — วันที่ ${selectedDate} ${getHoursLabel(hours)}`
-              : ` — ย้อนหลัง ${hours} ชั่วโมง`}
+            {lastActiveFilter === 'date' ? ` — วันที่ ${selectedDate}` : ` — ย้อนหลัง ${hours} ชั่วโมง`}
           </p>
         )}
 
