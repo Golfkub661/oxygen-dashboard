@@ -5,7 +5,7 @@ from django.utils import timezone
 from .models import OxygenReading
 from . import mqtt_client
 import json
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date, time
 from collections import defaultdict
 from django.db.models.functions import TruncDate
 
@@ -84,15 +84,17 @@ def api_history(request):
     if date_str:
         try:
             selected_date = datetime.strptime(date_str, '%d/%m/%Y')
-            aware_date = timezone.make_aware(selected_date)
-            # ✅ ใช้ทั้ง date และ hours พร้อมกัน
+            # ✅ แก้: ใช้ combine กับ time.min เพื่อให้ได้ 00:00:00 ของวันนั้นใน timezone ไทย
+            aware_date = timezone.make_aware(
+                datetime.combine(selected_date.date(), time.min)
+            )
             since = aware_date
             until = aware_date + timedelta(hours=hours)
             readings = OxygenReading.objects.filter(
                 timestamp__gte=since,
                 timestamp__lt=until
             ).order_by('timestamp')
-        except:
+        except Exception as e:
             return JsonResponse({'data': [], 'total': 0})
     else:
         since = timezone.now() - timedelta(hours=hours)

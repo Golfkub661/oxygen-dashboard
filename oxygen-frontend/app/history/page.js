@@ -166,14 +166,6 @@ export default function HistoryPage() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="max-h-60 overflow-y-auto">
-                  {selectedDate && (
-                    <DropdownMenuItem
-                      onClick={() => setSelectedDate(null)}
-                      className="text-red-500 font-medium"
-                    >
-                      ล้างวันที่
-                    </DropdownMenuItem>
-                  )}
                   {availableDates.length === 0 ? (
                     <DropdownMenuItem disabled>ไม่มีข้อมูล</DropdownMenuItem>
                   ) : (
