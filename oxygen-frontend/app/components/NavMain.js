@@ -10,7 +10,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
-  SidebarMenuSubButton,
   useSidebar,
 } from '@/components/ui/sidebar'
 import { ChevronDown, ChevronUp } from 'lucide-react'
@@ -30,7 +29,6 @@ export default function NavMain({ routes }) {
         const isOpen = !isCollapsed && openCollapsible === route.id
         const hasSubRoutes = !!route.subs?.length
         
-        // ตรวจสอบสถานะ Active: หน้าปัจจุบันตรงกับ link หลัก หรือตรงกับ link ของเมนูย่อย (subs)
         const isParentActive = pathname === route.link
         const isSubActive = route.subs?.some((sub) => pathname === sub.link)
         const isActive = isParentActive || isSubActive
@@ -46,25 +44,33 @@ export default function NavMain({ routes }) {
                 className="w-full"
               >
                 <CollapsibleTrigger asChild>
-                  {/* ปรับสีให้จางลง (text-muted-foreground) และจะเข้มขึ้นเมื่อ hover หรือ active */}
+                  {/* เพิ่ม px-4 และ py-5 เพื่อเพิ่มพื้นที่ผิวสัมผัสปุ่มให้ดูหนาและสวยเต็มตากับกรอบขนาดใหญ่ */}
                   <SidebarMenuButton 
                     isActive={isActive}
-                    className={`transition-all duration-200 group/btn
+                    className={`transition-all duration-200 group/btn px-4 py-5
                       ${isActive 
-                        ? "text-sidebar-foreground font-semibold" 
-                        : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                        ? "!bg-emerald-50 !text-emerald-700 font-semibold dark:!bg-emerald-950/40 dark:!text-emerald-400" 
+                        : "text-muted-foreground hover:!text-emerald-700 hover:!bg-emerald-50/60 focus:!bg-emerald-50/60 active:!bg-emerald-50 active:!text-emerald-700"
                       }
                     `}
                   >
-                    {/* บังคับสีไอคอนให้จางและเข้มตามสถานะ */}
                     <div className={`transition-colors duration-200 
-                      ${isActive ? "text-sidebar-foreground" : "text-muted-foreground group-hover/btn:text-sidebar-foreground"}
+                      ${isActive 
+                        ? "!text-emerald-600" 
+                        : "text-muted-foreground group-hover/btn:!text-emerald-600 group-active/btn:!text-emerald-600"
+                      }
                     `}>
                       {route.icon}
                     </div>
 
                     {!isCollapsed && (
-                      <span className="ml-2 flex-1 text-sm font-medium">
+                      /* 👉 เปลี่ยนจาก ml-2 เป็น ml-4 ขยับข้อความให้ห่างจากไอคอนอย่างสวยงาม */
+                      <span className={`ml-4 flex-1 text-sm font-medium transition-colors duration-200
+                        ${isActive 
+                          ? "text-emerald-700" 
+                          : "group-hover/btn:text-emerald-700 group-active/btn:text-emerald-700"
+                        }
+                      `}>
                         {route.title}
                       </span>
                     )}
@@ -77,7 +83,8 @@ export default function NavMain({ routes }) {
                 </CollapsibleTrigger>
                 {!isCollapsed && (
                   <CollapsibleContent>
-                    <SidebarMenuSub>
+                    {/* ปรับระยะเยื้องเมนูย่อยให้ขยับตามพื้นที่ที่ขยายขึ้น */}
+                    <SidebarMenuSub className="ml-6 pl-4 border-l border-gray-200">
                       {route.subs?.map((sub) => {
                         const isCurrentSubActive = pathname === sub.link;
                         return (
@@ -85,10 +92,10 @@ export default function NavMain({ routes }) {
                             <SidebarMenuSubButton 
                               isActive={isCurrentSubActive} 
                               asChild
-                              className={`transition-all duration-200
+                              className={`transition-all duration-200 py-2
                                 ${isCurrentSubActive 
-                                  ? "text-sidebar-foreground font-medium" 
-                                  : "text-muted-foreground hover:text-sidebar-foreground"
+                                  ? "!text-emerald-700 font-medium" 
+                                  : "text-muted-foreground hover:!text-emerald-600 active:!text-emerald-600"
                                 }
                               `}
                             >
@@ -102,28 +109,38 @@ export default function NavMain({ routes }) {
                 )}
               </Collapsible>
             ) : (
-              /* สำหรับเมนูเดี่ยวที่ไม่มีเมนูย่อย (เช่น หน้าแรก, กราฟ, ประวัติ) */
+              /* สำหรับเมนูเดี่ยวที่ไม่มีเมนูย่อย (หน้าแรก, กราฟแสดงผล, ประวัติการบันทึก) */
               <SidebarMenuButton 
                 tooltip={route.title} 
                 isActive={isActive} 
                 asChild
-                className={`transition-all duration-200 group/item
+                className={`transition-all duration-200 group/item px-4 py-5
                   ${isActive 
-                    ? "text-sidebar-foreground font-semibold bg-sidebar-accent" 
-                    : "text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    ? "!bg-emerald-50 !text-emerald-700 font-semibold dark:!bg-emerald-950/40 dark:!text-emerald-400" 
+                    : "text-muted-foreground hover:!text-emerald-700 hover:!bg-emerald-50/60 focus:!bg-emerald-50/60 active:!bg-emerald-50 active:!text-emerald-700"
                   }
                 `}
               >
                 <Link href={route.link} className="flex items-center w-full">
-                  {/* จัดการสีของไอคอนเดี่ยว */}
                   <div className={`transition-colors duration-200
-                    ${isActive ? "text-sidebar-foreground" : "text-muted-foreground group-hover/item:text-sidebar-foreground"}
+                    ${isActive 
+                      ? "!text-emerald-600" 
+                      : "text-muted-foreground group-hover/item:!text-emerald-600 group-active/item:!text-emerald-600"
+                    }
                   `}>
                     {route.icon}
                   </div>
                   
                   {!isCollapsed && (
-                    <span className="ml-2 text-sm font-medium">{route.title}</span>
+                    /* 👉 เปลี่ยนจาก ml-2 เป็น ml-4 ขยับข้อความให้ห่างจากไอคอนของเมนูเดี่ยว */
+                    <span className={`ml-4 text-sm font-medium transition-colors duration-200
+                      ${isActive 
+                        ? "text-emerald-700" 
+                        : "group-hover/item:text-emerald-700 group-active/item:text-emerald-700"
+                      }
+                    `}>
+                      {route.title}
+                    </span>
                   )}
                 </Link>
               </SidebarMenuButton>

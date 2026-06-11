@@ -18,7 +18,6 @@ TOPIC_RLY3  = "control/relay/3"
 
 client = mqtt.Client()
 
-# ✅ เก็บค่าล่าสุดใน memory เสมอ
 latest_data  = {}
 is_recording = False
 
@@ -30,22 +29,23 @@ def on_message(c, userdata, msg):
     global latest_data
     try:
         data = json.loads(msg.payload.decode())
-
-        # ✅ อัปเดต latest_data เสมอ ไม่ว่าจะ recording หรือไม่
         latest_data = data
         print(f"Received: {data}")
 
-        # บันทึก DB เฉพาะตอน recording เท่านั้น
         if is_recording:
-            o2  = data.get("o2_pct", 0)
-            mgl = data.get("o2_mgl", 0)
-            if o2 > 0 or mgl > 0:  # ไม่บันทึกค่า 0
+            o2       = data.get("o2_pct", 0)
+            mgl      = data.get("o2_mgl", 0)
+            temp_air = data.get("temp_air", 0)   # ✅ เพิ่ม
+            humidity = data.get("humidity", 0)   # ✅ เพิ่ม
+
+            # ✅ บันทึกถ้ามีค่าจากเซนเซอร์ตัวใดตัวหนึ่ง
+            if o2 > 0 or mgl > 0 or temp_air > 0 or humidity > 0:
                 OxygenReading.objects.create(
                     value       = o2,
                     mgl         = mgl,
                     temperature = data.get("temp_water", 0),
-                    temp_air    = data.get("temp_air", 0),
-                    humidity    = data.get("humidity", 0),
+                    temp_air    = temp_air,
+                    humidity    = humidity,
                     relay1      = data.get("relay1", False),
                     relay2      = data.get("relay2", False),
                     relay3      = data.get("relay3", False),
