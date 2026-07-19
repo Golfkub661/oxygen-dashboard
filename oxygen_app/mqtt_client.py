@@ -35,20 +35,29 @@ def on_message(c, userdata, msg):
         if is_recording:
             o2       = data.get("o2_pct", 0)
             mgl      = data.get("o2_mgl", 0)
-            temp_air = data.get("temp_air", 0)   # ✅ เพิ่ม
-            humidity = data.get("humidity", 0)   # ✅ เพิ่ม
+            temp_air = data.get("temp_air", 0)
+            humidity = data.get("humidity", 0)
 
             # ✅ บันทึกถ้ามีค่าจากเซนเซอร์ตัวใดตัวหนึ่ง
             if o2 > 0 or mgl > 0 or temp_air > 0 or humidity > 0:
                 OxygenReading.objects.create(
-                    value       = o2,
-                    mgl         = mgl,
-                    temperature = data.get("temp_water", 0),
-                    temp_air    = temp_air,
-                    humidity    = humidity,
-                    relay1      = data.get("relay1", False),
-                    relay2      = data.get("relay2", False),
-                    relay3      = data.get("relay3", False),
+                    value        = o2,
+                    mgl          = mgl,
+                    temperature  = data.get("temp_water", 0),
+                    temp_air     = temp_air,
+                    humidity     = humidity,
+                    relay1       = data.get("relay1", False),
+                    relay2       = data.get("relay2", False),
+                    relay3       = data.get("relay3", False),
+                    # ✅ PZEM-017
+                    pzem_voltage = data.get("pzem_voltage", None),
+                    pzem_current = data.get("pzem_current", None),
+                    pzem_power   = data.get("pzem_power", None),
+                    pzem_energy  = data.get("pzem_energy", None),
+                    # ✅ RPM
+                    rpm1         = data.get("rpm1", None),
+                    rpm2         = data.get("rpm2", None),
+                    rpm3         = data.get("rpm3", None),
                 )
                 print(f"Saved: {data}")
         else:

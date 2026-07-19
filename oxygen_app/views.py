@@ -17,32 +17,50 @@ def api_latest(request):
     data = mqtt_client.latest_data
     if data:
         return JsonResponse({
-            'o2_pct':    data.get("o2_pct", 0),
-            'o2_mgl':    data.get("o2_mgl", 0),
-            'temp':      data.get("temp_water", 0),
-            'temp_air':  data.get("temp_air", 0),
-            'humidity':  data.get("humidity", 0),
-            'relay1':    data.get("relay1", False),
-            'relay2':    data.get("relay2", False),
-            'relay3':    data.get("relay3", False),
-            'timestamp': timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M:%S'),
-            'recording': mqtt_client.is_recording,
+            'o2_pct':       data.get("o2_pct", 0),
+            'o2_mgl':       data.get("o2_mgl", 0),
+            'temp':         data.get("temp_water", 0),
+            'temp_air':     data.get("temp_air", 0),
+            'humidity':     data.get("humidity", 0),
+            'relay1':       data.get("relay1", False),
+            'relay2':       data.get("relay2", False),
+            'relay3':       data.get("relay3", False),
+            # ✅ PZEM-017
+            'pzem_voltage': data.get("pzem_voltage", None),
+            'pzem_current': data.get("pzem_current", None),
+            'pzem_power':   data.get("pzem_power", None),
+            'pzem_energy':  data.get("pzem_energy", None),
+            # ✅ RPM
+            'rpm1':         data.get("rpm1", None),
+            'rpm2':         data.get("rpm2", None),
+            'rpm3':         data.get("rpm3", None),
+            'timestamp':    timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M:%S'),
+            'recording':    mqtt_client.is_recording,
         })
 
     latest = OxygenReading.objects.order_by('-timestamp').first()
     if latest:
         local_time = timezone.localtime(latest.timestamp)
         return JsonResponse({
-            'o2_pct':    latest.value,
-            'o2_mgl':    latest.mgl,
-            'temp':      latest.temperature,
-            'temp_air':  latest.temp_air,
-            'humidity':  latest.humidity,
-            'relay1':    latest.relay1,
-            'relay2':    latest.relay2,
-            'relay3':    latest.relay3,
-            'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
-            'recording': mqtt_client.is_recording,
+            'o2_pct':       latest.value,
+            'o2_mgl':       latest.mgl,
+            'temp':         latest.temperature,
+            'temp_air':     latest.temp_air,
+            'humidity':     latest.humidity,
+            'relay1':       latest.relay1,
+            'relay2':       latest.relay2,
+            'relay3':       latest.relay3,
+            # ✅ PZEM-017
+            'pzem_voltage': latest.pzem_voltage,
+            'pzem_current': latest.pzem_current,
+            'pzem_power':   latest.pzem_power,
+            'pzem_energy':  latest.pzem_energy,
+            # ✅ RPM
+            'rpm1':         latest.rpm1,
+            'rpm2':         latest.rpm2,
+            'rpm3':         latest.rpm3,
+            'timestamp':    local_time.strftime('%d/%m/%Y %H:%M:%S'),
+            'recording':    mqtt_client.is_recording,
         })
 
     return JsonResponse({
