@@ -49,6 +49,15 @@ def on_message(c, userdata, msg):
                     relay1      = data.get("relay1", False),
                     relay2      = data.get("relay2", False),
                     relay3      = data.get("relay3", False),
+                    voltage     = data.get("voltage", 0),
+                    current     = data.get("current", 0),
+                    power       = data.get("power", 0),
+                    energy      = data.get("energy", 0),
+                    rpm1        = data.get("rpm1", 0),
+                    rpm2        = data.get("rpm2", 0),
+                    rpm3        = data.get("rpm3", 0),
+                    latitude    = data.get("lat", None),
+                    longitude   = data.get("lng", None),
                 )
                 print(f"Saved: {data}")
         else:

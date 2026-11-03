@@ -11,7 +11,6 @@ def dashboard(request):
     return render(request, 'dashboard.html', {'latest': latest})
 
 def api_latest(request):
-    # ✅ ดึงจาก memory ก่อน (อัปเดตเสมอแม้ไม่ได้ recording)
     data = mqtt_client.latest_data
     if data:
         return JsonResponse({
@@ -23,11 +22,19 @@ def api_latest(request):
             'relay1':    data.get("relay1", False),
             'relay2':    data.get("relay2", False),
             'relay3':    data.get("relay3", False),
+            'pzem_voltage': data.get("pzem_voltage", 0),
+            'pzem_current': data.get("pzem_current", 0),
+            'pzem_power':   data.get("pzem_power", 0),
+            'pzem_energy':  data.get("pzem_energy", 0),
+            'rpm1':      data.get("rpm1", 0),
+            'rpm2':      data.get("rpm2", 0),
+            'rpm3':      data.get("rpm3", 0),
+            'lat':       data.get("lat", None),
+            'lng':       data.get("lng", None),
             'timestamp': timezone.localtime(timezone.now()).strftime('%d/%m/%Y %H:%M:%S'),
             'recording': mqtt_client.is_recording,
         })
 
-    # ถ้ายังไม่มีข้อมูลใหม่ใน memory ดึงจาก DB แทน
     latest = OxygenReading.objects.order_by('-timestamp').first()
     if latest:
         local_time = timezone.localtime(latest.timestamp)
@@ -40,6 +47,15 @@ def api_latest(request):
             'relay1':    latest.relay1,
             'relay2':    latest.relay2,
             'relay3':    latest.relay3,
+            'pzem_voltage': latest.voltage,
+            'pzem_current': latest.current,
+            'pzem_power':   latest.power,
+            'pzem_energy':  latest.energy,
+            'rpm1':      latest.rpm1,
+            'rpm2':      latest.rpm2,
+            'rpm3':      latest.rpm3,
+            'lat':       latest.latitude,
+            'lng':       latest.longitude,
             'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
             'recording': mqtt_client.is_recording,
         })
