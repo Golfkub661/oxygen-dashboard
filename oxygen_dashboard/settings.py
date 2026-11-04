@@ -7,12 +7,22 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ─── Security ───────────────────────────────────────────────
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-oxygen-dashboard-secret-key')
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
-# ─── Applications ────────────────────────────────────────────
+# ─── Security ───────────────────────────────────────────────
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-oxygen-dashboard-secret-key'
+)
+
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+ALLOWED_HOSTS = os.environ.get(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1'
+).split(',')
+
+
+# ─── Applications ───────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -20,14 +30,18 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'corsheaders',
     'channels',
     'oxygen_app',
 ]
 
-# ─── Middleware ───────────────────────────────────────────────
+
+# ─── Middleware ─────────────────────────────────────────────
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ static files on Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -36,8 +50,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 ROOT_URLCONF = 'oxygen_dashboard.urls'
 
+
+# ─── Templates ──────────────────────────────────────────────
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -54,7 +71,8 @@ TEMPLATES = [
     },
 ]
 
-# ─── ASGI / Channels ─────────────────────────────────────────
+
+# ─── ASGI / Channels ────────────────────────────────────────
 ASGI_APPLICATION = 'oxygen_dashboard.asgi.application'
 
 CHANNEL_LAYERS = {
@@ -63,7 +81,8 @@ CHANNEL_LAYERS = {
     }
 }
 
-# ─── Database ─────────────────────────────────────────────────
+
+# ─── Database ───────────────────────────────────────────────
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
@@ -87,17 +106,39 @@ else:
         }
     }
 
-# ─── Static Files ─────────────────────────────────────────────
+
+# ─── Static Files ───────────────────────────────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ─── Misc ──────────────────────────────────────────────────────
+STATICFILES_STORAGE = (
+    'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
+
+
+# ─── Misc ────────────────────────────────────────────────────
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 TIME_ZONE = 'Asia/Bangkok'
 USE_TZ = True
 
-# ─── MQTT ──────────────────────────────────────────────────────
-MQTT_BROKER = os.environ.get('MQTT_BROKER', 'broker.hivemq.com')
+
+# ─── MQTT ────────────────────────────────────────────────────
+MQTT_BROKER = os.environ.get(
+    'MQTT_BROKER',
+    'broker.hivemq.com'
+)
+
 MQTT_PORT = int(os.environ.get('MQTT_PORT', '1883'))
-MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'sensor/oxygen')  # ✅ แก้ให้ตรง ESP32
+
+MQTT_TOPIC = os.environ.get(
+    'MQTT_TOPIC',
+    'sensor/oxygen'
+)
+
+
+# ─── CORS ────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://oxygen-frontend-tau.vercel.app",
+]
