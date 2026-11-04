@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from .models import OxygenReading
+from .models import OxygenReading, ExperimentSession
 from . import mqtt_client
 import json
 
@@ -50,7 +50,7 @@ def api_latest(request):
             'pzem_voltage': latest.pzem_voltage,
             'pzem_current': latest.pzem_current,
             'pzem_power':   latest.pzem_power,
-            'pzem_energy':  latest.pzem_energy,  
+            'pzem_energy':  latest.pzem_energy,
             'rpm1':      latest.rpm1,
             'rpm2':      latest.rpm2,
             'rpm3':      latest.rpm3,
@@ -60,10 +60,8 @@ def api_latest(request):
             'recording': mqtt_client.is_recording,
         })
 
-    return JsonResponse({
-        'error': 'no data',
-        'recording': mqtt_client.is_recording
-    })
+    return JsonResponse({'error': 'no data', 'recording': mqtt_client.is_recording})
+
 
 @csrf_exempt
 def api_relay(request, relay_num):
@@ -80,6 +78,7 @@ def api_relay(request, relay_num):
         return JsonResponse({'success': True, 'relay': relay_num, 'state': state})
     return JsonResponse({'error': 'POST only'})
 
+
 @csrf_exempt
 def api_recording(request):
     if request.method == 'POST':
@@ -91,3 +90,79 @@ def api_recording(request):
             mqtt_client.is_recording = False
         return JsonResponse({'recording': mqtt_client.is_recording})
     return JsonResponse({'recording': mqtt_client.is_recording})
+
+
+# ─── Session APIs ─────────────────────────────────────────────
+
+@csrf_exempt
+def api_sessions_start(request):
+    """POST /api/sessions/start/ — สร้าง session ใหม่"""
+    if request.method == 'POST':
+        # ป้องกัน session ซ้อนกัน
+        if ExperimentSession.objects.filter(status='running').exists():
+            return JsonResponse({'error': 'มี session กำลัง running อยู่แล้ว'}, status=400)
+
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        condition = data.get('condition', '').strip()
+
+        if not name:
+            return JsonResponse({'error': 'กรุณาระบุชื่อการทดลอง'}, status=400)
+
+        session = ExperimentSession.objects.create(
+            name=name,
+            condition=condition,
+            status='running',
+        )
+        return JsonResponse({
+            'id':         session.id,
+            'name':       session.name,
+            'condition':  session.condition,
+            'status':     session.status,
+            'start_time': timezone.localtime(session.start_time).strftime('%d/%m/%Y %H:%M'),
+        })
+    return JsonResponse({'error': 'POST only'}, status=405)
+
+
+@csrf_exempt
+def api_sessions_stop(request):
+    """POST /api/sessions/stop/ — หยุด session ที่ running อยู่"""
+    if request.method == 'POST':
+        session = ExperimentSession.objects.filter(status='running').first()
+        if not session:
+            return JsonResponse({'error': 'ไม่มี session ที่กำลัง running'}, status=400)
+
+        session.status = 'stopped'
+        session.end_time = timezone.now()
+        session.save()
+
+        return JsonResponse({
+            'id':       session.id,
+            'name':     session.name,
+            'status':   session.status,
+            'end_time': timezone.localtime(session.end_time).strftime('%d/%m/%Y %H:%M'),
+        })
+    return JsonResponse({'error': 'POST only'}, status=405)
+
+
+def api_sessions_list(request):
+    """GET /api/sessions/ — รายการ session ทั้งหมด"""
+    sessions = ExperimentSession.objects.all()
+    data = []
+    for s in sessions:
+        data.append({
+            'id':         s.id,
+            'name':       s.name,
+            'condition':  s.condition,
+            'status':     s.status,
+            'start_time': timezone.localtime(s.start_time).strftime('%d/%m/%Y %H:%M'),
+            'end_time':   timezone.localtime(s.end_time).strftime('%d/%m/%Y %H:%M') if s.end_time else None,
+            'reading_count': s.readings.count(),
+        })
+    return JsonResponse({'sessions': data})
+
+
+def api_sessions_readings(request, session_id):
+    """GET /api/sessions/<id>/readings/ — ข้อมูลใน session"""
+    try:
+        session =
