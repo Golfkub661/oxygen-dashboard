@@ -1,3 +1,4 @@
+
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -67,9 +68,13 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
     import dj_database_url
+
+    # ตัด ?pgbouncer=true ออกก่อน parse
+    clean_url = DATABASE_URL.split('?')[0]
+
     DATABASES = {
         'default': dj_database_url.config(
-            default=DATABASE_URL,
+            default=clean_url,
             conn_max_age=600,
             ssl_require=True,
         )
