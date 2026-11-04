@@ -9,57 +9,63 @@ django.setup()
 
 from oxygen_app.models import OxygenReading
 
-BROKER      = "broker.hivemq.com"
-PORT        = 1883
-TOPIC_SUB   = "sensor/oxygen"
-TOPIC_RLY1  = "control/relay/1"
-TOPIC_RLY2  = "control/relay/2"
-TOPIC_RLY3  = "control/relay/3"
+BROKER = "broker.hivemq.com"
+PORT = 1883
+TOPIC_SUB = "sensor/oxygen"
+TOPIC_RLY1 = "control/relay/1"
+TOPIC_RLY2 = "control/relay/2"
+TOPIC_RLY3 = "control/relay/3"
 
 client = mqtt.Client()
 
-# ✅ เก็บค่าล่าสุดใน memory เสมอ
-latest_data  = {}
+# เก็บค่าล่าสุดใน memory เสมอ
+latest_data = {}
 is_recording = False
+
 
 def on_connect(c, userdata, flags, rc):
     print(f"MQTT Connected: {rc}")
     c.subscribe(TOPIC_SUB)
 
+
 def on_message(c, userdata, msg):
     global latest_data
+
     try:
         data = json.loads(msg.payload.decode())
 
-        # ✅ อัปเดต latest_data เสมอ ไม่ว่าจะ recording หรือไม่
+        # อัปเดต latest_data เสมอ ไม่ว่าจะ recording หรือไม่
         latest_data = data
         print(f"Received: {data}")
 
         # บันทึก DB เฉพาะตอน recording เท่านั้น
         if is_recording:
-            o2  = data.get("o2_pct", 0)
+            o2 = data.get("o2_pct", 0)
             mgl = data.get("o2_mgl", 0)
-            if o2 > 0 or mgl > 0:  # ไม่บันทึกค่า 0
+
+            if o2 > 0 or mgl > 0:
                 OxygenReading.objects.create(
-                    value       = o2,
-                    mgl         = mgl,
-                    temperature = data.get("temp_water", 0),
-                    temp_air    = data.get("temp_air", 0),
-                    humidity    = data.get("humidity", 0),
-                    relay1      = data.get("relay1", False),
-                    relay2      = data.get("relay2", False),
-                    relay3      = data.get("relay3", False),
-                    voltage     = data.get("pzem_voltage", 0),
-                    current     = data.get("pzem_current", 0),
-                    power       = data.get("pzem_power", 0),
-                    energy      = data.get("pzem_energy", 0),
-                    rpm1        = data.get("rpm1", 0),
-                    rpm2        = data.get("rpm2", 0),
-                    rpm3        = data.get("rpm3", 0),
-                    latitude    = data.get("lat", None),
-                    longitude   = data.get("lng", None),
+                    value=o2,
+                    mgl=mgl,
+                    temperature=data.get("temp_water", 0),
+                    temp_air=data.get("temp_air", 0),
+                    humidity=data.get("humidity", 0),
+                    relay1=data.get("relay1", False),
+                    relay2=data.get("relay2", False),
+                    relay3=data.get("relay3", False),
+                    pzem_voltage=data.get("pzem_voltage", None),
+                    pzem_current=data.get("pzem_current", None),
+                    pzem_power=data.get("pzem_power", None),
+                    pzem_energy=data.get("pzem_energy", None),
+                    rpm1=data.get("rpm1", None),
+                    rpm2=data.get("rpm2", None),
+                    rpm3=data.get("rpm3", None),
+                    latitude=data.get("lat", None),
+                    longitude=data.get("lng", None),
                 )
+
                 print(f"Saved: {data}")
+
         else:
             print("Not recording, skipped DB save")
 
@@ -67,8 +73,9 @@ def on_message(c, userdata, msg):
         print(f"Error: {e}")
 
 def publish_relay(relay_num, state):
-    topic   = f"control/relay/{relay_num}"
+    topic = f"control/relay/{relay_num}"
     payload = "ON" if state else "OFF"
+
     client.publish(topic, payload)
     print(f"Published {topic}: {payload}")
 
@@ -77,9 +84,10 @@ def on_disconnect(c, userdata, rc):
     c.reconnect()
 
 def start():
-    client.on_connect    = on_connect
-    client.on_message    = on_message
+    client.on_connect = on_connect
+    client.on_message = on_message
     client.on_disconnect = on_disconnect
+
     client.connect(BROKER, PORT, 60)
     client.loop_start()
 
