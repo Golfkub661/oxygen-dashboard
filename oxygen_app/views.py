@@ -1,4 +1,3 @@
-
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -283,7 +282,9 @@ def api_history(request):
             start = timezone.make_aware(
                 date_obj.replace(hour=0, minute=0, second=0)
             )
-            end = start + timedelta(hours=hours)
+            end = timezone.make_aware(
+                date_obj.replace(hour=23, minute=59, second=59)
+            )
 
         except:
             return JsonResponse({'error': 'invalid date'}, status=400)
