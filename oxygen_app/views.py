@@ -1,3 +1,4 @@
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -6,12 +7,15 @@ from .models import OxygenReading, ExperimentSession
 from . import mqtt_client
 import json
 
+
 def dashboard(request):
     latest = OxygenReading.objects.order_by('-timestamp').first()
     return render(request, 'dashboard.html', {'latest': latest})
 
+
 def api_latest(request):
     data = mqtt_client.latest_data
+
     if data:
         return JsonResponse({
             'o2_pct':    data.get("o2_pct", 0),
@@ -36,8 +40,10 @@ def api_latest(request):
         })
 
     latest = OxygenReading.objects.order_by('-timestamp').first()
+
     if latest:
         local_time = timezone.localtime(latest.timestamp)
+
         return JsonResponse({
             'o2_pct':    latest.value,
             'o2_mgl':    latest.mgl,
@@ -60,36 +66,54 @@ def api_latest(request):
             'recording': mqtt_client.is_recording,
         })
 
-    return JsonResponse({'error': 'no data', 'recording': mqtt_client.is_recording})
+    return JsonResponse({
+        'error': 'no data',
+        'recording': mqtt_client.is_recording
+    })
 
 
 @csrf_exempt
 def api_relay(request, relay_num):
     if request.method == 'POST':
-        data  = json.loads(request.body)
+        data = json.loads(request.body)
         state = data.get('state', False)
+
         mqtt_client.publish_relay(relay_num, state)
 
         latest = OxygenReading.objects.order_by('-timestamp').first()
+
         if latest:
             setattr(latest, f'relay{relay_num}', state)
             latest.save()
 
-        return JsonResponse({'success': True, 'relay': relay_num, 'state': state})
+        return JsonResponse({
+            'success': True,
+            'relay': relay_num,
+            'state': state
+        })
+
     return JsonResponse({'error': 'POST only'})
 
 
 @csrf_exempt
 def api_recording(request):
     if request.method == 'POST':
-        data   = json.loads(request.body)
+        data = json.loads(request.body)
         action = data.get('action')
+
         if action == 'start':
             mqtt_client.is_recording = True
+
         elif action == 'stop':
             mqtt_client.is_recording = False
-        return JsonResponse({'recording': mqtt_client.is_recording})
-    return JsonResponse({'recording': mqtt_client.is_recording})
+
+        return JsonResponse({
+            'recording': mqtt_client.is_recording
+        })
+
+    return JsonResponse({
+        'recording': mqtt_client.is_recording
+    })
 
 
 # ─── Session APIs ─────────────────────────────────────────────
@@ -97,23 +121,30 @@ def api_recording(request):
 @csrf_exempt
 def api_sessions_start(request):
     """POST /api/sessions/start/ — สร้าง session ใหม่"""
+
     if request.method == 'POST':
+
         # ป้องกัน session ซ้อนกัน
         if ExperimentSession.objects.filter(status='running').exists():
-            return JsonResponse({'error': 'มี session กำลัง running อยู่แล้ว'}, status=400)
+            return JsonResponse({
+                'error': 'มี session กำลัง running อยู่แล้ว'
+            }, status=400)
 
         data = json.loads(request.body)
         name = data.get('name', '').strip()
         condition = data.get('condition', '').strip()
 
         if not name:
-            return JsonResponse({'error': 'กรุณาระบุชื่อการทดลอง'}, status=400)
+            return JsonResponse({
+                'error': 'กรุณาระบุชื่อการทดลอง'
+            }, status=400)
 
         session = ExperimentSession.objects.create(
             name=name,
             condition=condition,
             status='running',
         )
+
         return JsonResponse({
             'id':         session.id,
             'name':       session.name,
@@ -121,16 +152,24 @@ def api_sessions_start(request):
             'status':     session.status,
             'start_time': timezone.localtime(session.start_time).strftime('%d/%m/%Y %H:%M'),
         })
+
     return JsonResponse({'error': 'POST only'}, status=405)
 
 
 @csrf_exempt
 def api_sessions_stop(request):
     """POST /api/sessions/stop/ — หยุด session ที่ running อยู่"""
+
     if request.method == 'POST':
-        session = ExperimentSession.objects.filter(status='running').first()
+
+        session = ExperimentSession.objects.filter(
+            status='running'
+        ).first()
+
         if not session:
-            return JsonResponse({'error': 'ไม่มี session ที่กำลัง running'}, status=400)
+            return JsonResponse({
+                'error': 'ไม่มี session ที่กำลัง running'
+            }, status=400)
 
         session.status = 'stopped'
         session.end_time = timezone.now()
@@ -142,13 +181,16 @@ def api_sessions_stop(request):
             'status':   session.status,
             'end_time': timezone.localtime(session.end_time).strftime('%d/%m/%Y %H:%M'),
         })
+
     return JsonResponse({'error': 'POST only'}, status=405)
 
 
 def api_sessions_list(request):
     """GET /api/sessions/ — รายการ session ทั้งหมด"""
+
     sessions = ExperimentSession.objects.all()
     data = []
+
     for s in sessions:
         data.append({
             'id':         s.id,
@@ -159,10 +201,64 @@ def api_sessions_list(request):
             'end_time':   timezone.localtime(s.end_time).strftime('%d/%m/%Y %H:%M') if s.end_time else None,
             'reading_count': s.readings.count(),
         })
+
     return JsonResponse({'sessions': data})
 
 
 def api_sessions_readings(request, session_id):
     """GET /api/sessions/<id>/readings/ — ข้อมูลใน session"""
+
     try:
-        session =
+        session = ExperimentSession.objects.get(id=session_id)
+
+    except ExperimentSession.DoesNotExist:
+        return JsonResponse({
+            'error': 'ไม่พบ session'
+        }, status=404)
+
+    readings = session.readings.all().order_by('timestamp')
+
+    # Pagination
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 50))
+
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    total = readings.count()
+    readings = readings[start:end]
+
+    data = []
+
+    for r in readings:
+        local_time = timezone.localtime(r.timestamp)
+
+        data.append({
+            'timestamp':    local_time.strftime('%d/%m/%Y %H:%M'),
+            'latitude':     r.latitude,
+            'longitude':    r.longitude,
+            'o2_pct':       r.value,
+            'o2_mgl':       r.mgl,
+            'temp_water':   r.temperature,
+            'temp_air':     r.temp_air,
+            'humidity':     r.humidity,
+            'pzem_voltage': r.pzem_voltage,
+            'pzem_current': r.pzem_current,
+            'pzem_power':   r.pzem_power,
+            'pzem_energy':  r.pzem_energy,
+            'rpm1':         r.rpm1,
+            'rpm2':         r.rpm2,
+            'rpm3':         r.rpm3,
+        })
+
+    return JsonResponse({
+        'session': {
+            'id':     session.id,
+            'name':   session.name,
+            'status': session.status,
+        },
+        'total':     total,
+        'page':      page,
+        'page_size': page_size,
+        'readings':  data,
+    })
