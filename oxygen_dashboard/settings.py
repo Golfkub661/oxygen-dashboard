@@ -138,7 +138,5 @@ MQTT_TOPIC = os.environ.get(
 
 
 # ─── CORS ────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://oxygen-frontend-tau.vercel.app",
-]
+# ─── CORS ────────────────────────────────────────────────────
+CORS_ALLOW_ALL_ORIGINS = True
