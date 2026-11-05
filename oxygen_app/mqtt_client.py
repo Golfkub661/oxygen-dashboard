@@ -54,28 +54,28 @@ def on_message(c, userdata, msg):
             o2 = data.get("o2_pct", 0)
             mgl = data.get("o2_mgl", 0)
 
-                OxygenReading.objects.create(
-                    session=active_session,
-                    value=o2,
-                    mgl=mgl,
-                    temperature=data.get("temp_water", 0),
-                    temp_air=data.get("temp_air", 0),
-                    humidity=data.get("humidity", 0),
-                    relay1=data.get("relay1", False),
-                    relay2=data.get("relay2", False),
-                    relay3=data.get("relay3", False),
-                    pzem_voltage=data.get("pzem_voltage", None),
-                    pzem_current=data.get("pzem_current", None),
-                    pzem_power=data.get("pzem_power", None),
-                    pzem_energy=data.get("pzem_energy", None),
-                    rpm1=get_rpm(data.get("rpm1")),
-                    rpm2=get_rpm(data.get("rpm2")),
-                    rpm3=get_rpm(data.get("rpm3")),
-                    latitude=data.get("lat", None),
-                    longitude=data.get("lng", None),
-                )
+            OxygenReading.objects.create(
+                session=active_session,
+                value=o2,
+                mgl=mgl,
+                temperature=data.get("temp_water", 0),
+                temp_air=data.get("temp_air", 0),
+                humidity=data.get("humidity", 0),
+                relay1=data.get("relay1", False),
+                relay2=data.get("relay2", False),
+                relay3=data.get("relay3", False),
+                pzem_voltage=data.get("pzem_voltage", None),
+                pzem_current=data.get("pzem_current", None),
+                pzem_power=data.get("pzem_power", None),
+                pzem_energy=data.get("pzem_energy", None),
+                rpm1=get_rpm(data.get("rpm1")),
+                rpm2=get_rpm(data.get("rpm2")),
+                rpm3=get_rpm(data.get("rpm3")),
+                latitude=data.get("lat", None),
+                longitude=data.get("lng", None),
+            )
 
-                print(f"Saved: session={active_session}, data={data}")
+            print(f"Saved: session={active_session}, data={data}")
 
         else:
             print("Not recording, skipped DB save")
