@@ -1,3 +1,4 @@
+
 import paho.mqtt.client as mqtt
 import json
 import django
@@ -44,16 +45,17 @@ def on_message(c, userdata, msg):
         latest_data = data
         print(f"Received: {data}")
 
-        if is_recording:
+        # ตรวจสอบ session ที่กำลัง running
+        active_session = get_active_session()
+
+        # บันทึกเมื่อเปิด recording หรือมี session running
+        if is_recording or active_session:
+
             o2 = data.get("o2_pct", 0)
             mgl = data.get("o2_mgl", 0)
 
-            if o2 > 0 or mgl > 0:
-                # ดึง session ที่กำลัง running
-                active_session = get_active_session()
-
                 OxygenReading.objects.create(
-                    session=active_session,  # None ถ้าไม่มี session
+                    session=active_session,
                     value=o2,
                     mgl=mgl,
                     temperature=data.get("temp_water", 0),
@@ -66,13 +68,15 @@ def on_message(c, userdata, msg):
                     pzem_current=data.get("pzem_current", None),
                     pzem_power=data.get("pzem_power", None),
                     pzem_energy=data.get("pzem_energy", None),
-                    rpm1=get_rpm(data.get("rpm1")),  # filter > 120
+                    rpm1=get_rpm(data.get("rpm1")),
                     rpm2=get_rpm(data.get("rpm2")),
                     rpm3=get_rpm(data.get("rpm3")),
                     latitude=data.get("lat", None),
                     longitude=data.get("lng", None),
                 )
+
                 print(f"Saved: session={active_session}, data={data}")
+
         else:
             print("Not recording, skipped DB save")
 
