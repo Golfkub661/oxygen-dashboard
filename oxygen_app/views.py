@@ -262,3 +262,82 @@ def api_sessions_readings(request, session_id):
         'page_size': page_size,
         'readings':  data,
     })
+
+
+# ─── History APIs ─────────────────────────────────────────────
+
+def api_history(request):
+    """GET /api/history/?hours=1&date=DD/MM/YYYY"""
+    from datetime import timedelta
+    from django.db.models import Avg
+
+    hours = int(request.GET.get('hours', 1))
+    date_str = request.GET.get('date', None)
+
+    now = timezone.localtime(timezone.now())
+
+    if date_str:
+        try:
+            from datetime import datetime
+            date_obj = datetime.strptime(date_str, '%d/%m/%Y')
+            start = timezone.make_aware(
+                date_obj.replace(hour=0, minute=0, second=0)
+            )
+            end = start + timedelta(hours=hours)
+
+        except:
+            return JsonResponse({'error': 'invalid date'}, status=400)
+
+    else:
+        end = now
+        start = end - timedelta(hours=hours)
+
+    readings = OxygenReading.objects.filter(
+        timestamp__gte=start,
+        timestamp__lte=end
+    ).order_by('timestamp')
+
+    # เฉลี่ยทุก 1 นาที
+    from collections import defaultdict
+    buckets = defaultdict(list)
+
+    for r in readings:
+        local_time = timezone.localtime(r.timestamp)
+        key = local_time.strftime('%d/%m/%Y %H:%M')
+        buckets[key].append(r)
+
+    data = []
+
+    for key in sorted(buckets.keys()):
+        rows = buckets[key]
+
+        def avg_field(field):
+            vals = [
+                getattr(r, field)
+                for r in rows
+                if getattr(r, field) is not None
+            ]
+            return round(sum(vals) / len(vals), 2) if vals else None
+
+        data.append({
+            'timestamp': key,
+            'o2_pct':   avg_field('value'),
+            'o2_mgl':   avg_field('mgl'),
+            'temp':     avg_field('temperature'),
+            'temp_air': avg_field('temp_air'),
+            'humidity': avg_field('humidity'),
+        })
+
+    return JsonResponse({'data': data})
+
+
+def api_available_dates(request):
+    """GET /api/available-dates/"""
+    readings = OxygenReading.objects.order_by('timestamp')
+    dates = set()
+
+    for r in readings:
+        local_time = timezone.localtime(r.timestamp)
+        dates.add(local_time.strftime('%d/%m/%Y'))
+
+    return JsonResponse({'dates': sorted(dates)})
