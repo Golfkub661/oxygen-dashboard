@@ -57,8 +57,8 @@ class OxygenReading(models.Model):
     rpm3 = models.FloatField(null=True, blank=True)
 
     # --- GPS ---
-    latitude  = models.FloatField(null=True, blank=True)
-    longitude = models.FloatField(null=True, blank=True)
+    latitude  = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=10, decimal_places=7, null=True, blank=True)
 
     class Meta:
         ordering = ['-timestamp']

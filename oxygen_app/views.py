@@ -79,8 +79,8 @@ def api_latest(request):
             'rpm2':         latest.rpm2,
             'rpm3':         latest.rpm3,
 
-            'lat':          latest.latitude,
-            'lng':          latest.longitude,
+            'lat': float(latest.latitude) if latest.latitude is not None else None,
+            'lng': float(latest.longitude) if latest.longitude is not None else None,
 
             'timestamp': local_time.strftime('%d/%m/%Y %H:%M:%S'),
             'recording': mqtt_client.is_recording,
@@ -159,7 +159,6 @@ def api_recording(request):
 
 @csrf_exempt
 def api_calibrate_start(request):
-    """POST /api/calibrate/start/  body: {"type": "SAT"} หรือ {"type": "ZERO"}"""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST only'}, status=405)
 
@@ -174,8 +173,6 @@ def api_calibrate_start(request):
             )
 
         mqtt_client.publish_calibrate(cal_type)
-
-        # รีเซ็ต status เก่าออกก่อนเริ่มใหม่
         mqtt_client.latest_cal_status = {}
 
         return JsonResponse({'success': True, 'type': cal_type})
@@ -185,7 +182,6 @@ def api_calibrate_start(request):
 
 
 def api_calibrate_status(request):
-    """GET /api/calibrate/status/ — ดึงสถานะ calibrate ล่าสุด"""
     return JsonResponse(
         mqtt_client.latest_cal_status or {'status': 'idle'}
     )
@@ -315,8 +311,8 @@ def api_sessions_readings(request, session_id):
         local_time = timezone.localtime(r.timestamp)
         data.append({
             'timestamp':    local_time.strftime('%d/%m/%Y %H:%M'),
-            'latitude':     r.latitude,
-            'longitude':    r.longitude,
+            'latitude':  float(r.latitude) if r.latitude is not None else None,
+            'longitude': float(r.longitude) if r.longitude is not None else None,
             'o2_pct':       r.value,
             'o2_mgl':       r.mgl,
             'temp_water':   r.temperature,
@@ -402,6 +398,9 @@ def api_history(request):
                     return value
             return None
 
+        lat = last_field('latitude')
+        lng = last_field('longitude')
+
         data.append({
             'timestamp':    key,
             'o2_pct':       avg_field('value'),
@@ -416,8 +415,8 @@ def api_history(request):
             'rpm1':         avg_field('rpm1'),
             'rpm2':         avg_field('rpm2'),
             'rpm3':         avg_field('rpm3'),
-            'latitude':     last_field('latitude'),
-            'longitude':    last_field('longitude'),
+            'latitude':     float(lat) if lat is not None else None,
+            'longitude':    float(lng) if lng is not None else None,
         })
 
     return JsonResponse({'data': data})
